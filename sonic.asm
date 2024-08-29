@@ -133,6 +133,7 @@ RomEndLoc:	dc.l EndOfRom-1		; End address of ROM
 		dc.l $20202020		; SRAM end ($20xxxx)
 		dc.b "                                                    " ; Notes (unused, anything can be put in this space, but it has to be 52 bytes.)
 		dc.b "JUE             " ; Region (Country code)
+
 EndOfHeader:
 
 ; ===========================================================================
@@ -5592,7 +5593,7 @@ Map_Swing_SLZ:	include	"_maps\Swinging Platforms (SLZ).asm"
 		include	"_incObj\17 Spiked Pole Helix.asm"
 Map_Hel:	include	"_maps\Spiked Pole Helix.asm"
 		include	"_incObj\18 Platforms.asm"
-Map_Plat_Unused:include	"_maps\Platforms (unused).asm"
+Map_Plat_Unused: include	"_maps\Platforms (unused).asm"
 Map_Plat_GHZ:	include	"_maps\Platforms (GHZ).asm"
 Map_Plat_SYZ:	include	"_maps\Platforms (SYZ).asm"
 Map_Plat_SLZ:	include	"_maps\Platforms (SLZ).asm"
@@ -5846,7 +5847,7 @@ loc_8B48:
 		include	"_incObj\24, 27 & 3F Explosions.asm"
 		include	"_anim\Ball Hog.asm"
 Map_Hog:	include	"_maps\Ball Hog.asm"
-Map_MisDissolve:include	"_maps\Buzz Bomber Missile Dissolve.asm"
+Map_MisDissolve: include	"_maps\Buzz Bomber Missile Dissolve.asm"
 		include	"_maps\Explosions.asm"
 
 		include	"_incObj\28 Animals.asm"
@@ -8301,7 +8302,7 @@ SS_AniGlassBlock:
 locret_1B640:
 		rts	
 ; ===========================================================================
-SS_AniGlassData:dc.b $4B, $4C, $4D, $4E, $4B, $4C, $4D,	$4E, 0,	0
+SS_AniGlassData: dc.b $4B, $4C, $4D, $4E, $4B, $4C, $4D,	$4E, 0,	0
 
 ; ---------------------------------------------------------------------------
 ; Special stage	layout pointers
@@ -8663,7 +8664,7 @@ Nem_Swing:	incbin	"artnem\GHZ Swinging Platform.bin"
 		even
 Nem_Bridge:	incbin	"artnem\GHZ Bridge.bin"
 		even
-Nem_GhzUnkBlock:incbin	"artnem\Unused - GHZ Block.bin"
+Nem_GhzUnkBlock: incbin	"artnem\Unused - GHZ Block.bin"
 		even
 Nem_Ball:	incbin	"artnem\GHZ Giant Ball.bin"
 		even
@@ -8686,7 +8687,7 @@ Nem_Water:	incbin	"artnem\LZ Water Surface.bin"
 		even
 Nem_Splash:	incbin	"artnem\LZ Water & Splashes.bin"
 		even
-Nem_LzSpikeBall:incbin	"artnem\LZ Spiked Ball & Chain.bin"
+Nem_LzSpikeBall: incbin	"artnem\LZ Spiked Ball & Chain.bin"
 		even
 Nem_FlapDoor:	incbin	"artnem\LZ Flapping Door.bin"
 		even

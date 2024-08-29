@@ -51,7 +51,7 @@ Brick_Action:	; Routine 2
 			bra.w	DisplaySprite
 		endc
 ; ===========================================================================
-Brick_TypeIndex:dc.w Brick_Type00-Brick_TypeIndex
+Brick_TypeIndex: dc.w Brick_Type00-Brick_TypeIndex
 		dc.w Brick_Type01-Brick_TypeIndex
 		dc.w Brick_Type02-Brick_TypeIndex
 		dc.w Brick_Type03-Brick_TypeIndex

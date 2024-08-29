@@ -95,7 +95,7 @@ loc_10F92:
 locret_10FA0:
 		rts	
 ; ===========================================================================
-Stair_TypeIndex:dc.w Stair_Type00-Stair_TypeIndex
+Stair_TypeIndex: dc.w Stair_Type00-Stair_TypeIndex
 		dc.w Stair_Type01-Stair_TypeIndex
 		dc.w Stair_Type02-Stair_TypeIndex
 		dc.w Stair_Type01-Stair_TypeIndex

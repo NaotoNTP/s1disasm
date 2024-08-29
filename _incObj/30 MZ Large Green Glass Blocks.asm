@@ -122,7 +122,7 @@ Glass_Types:
 ; End of function Glass_Types
 
 ; ===========================================================================
-Glass_TypeIndex:dc.w Glass_Type00-Glass_TypeIndex
+Glass_TypeIndex: dc.w Glass_Type00-Glass_TypeIndex
 		dc.w Glass_Type01-Glass_TypeIndex
 		dc.w Glass_Type02-Glass_TypeIndex
 		dc.w Glass_Type03-Glass_TypeIndex

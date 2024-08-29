@@ -336,7 +336,7 @@ PLC_SBZAnimals:	dc.w ((PLC_SBZAnimalsend-PLC_SBZAnimals-2)/6)-1
 ; ---------------------------------------------------------------------------
 ; Pattern load cues - special stage results screen
 ; ---------------------------------------------------------------------------
-PLC_SSResult:dc.w ((PLC_SpeStResultend-PLC_SSResult-2)/6)-1
+PLC_SSResult: dc.w ((PLC_SpeStResultend-PLC_SSResult-2)/6)-1
 		plcm	Nem_ResultEm, $A820	; emeralds
 		plcm	Nem_MiniSonic, $AA20	; mini Sonic
 	PLC_SpeStResultend:

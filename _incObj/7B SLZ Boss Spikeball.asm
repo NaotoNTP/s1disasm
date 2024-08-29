@@ -344,7 +344,7 @@ loc_1909A:
 
 		rts	
 ; ===========================================================================
-Obj7B_FragSpeed:dc.w -$100, -$340	; horizontal, vertical
+Obj7B_FragSpeed: dc.w -$100, -$340	; horizontal, vertical
 		dc.w -$A0, -$240
 		dc.w $100, -$340
 		dc.w $A0, -$240

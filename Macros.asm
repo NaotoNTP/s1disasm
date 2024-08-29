@@ -1,17 +1,4 @@
 ; ---------------------------------------------------------------------------
-; Align and pad
-; input: length to align to, value to use as padding (default is 0)
-; ---------------------------------------------------------------------------
-
-align:	macro
-	if (narg=1)
-	dcb.b (\1-(*%\1))%\1,0
-	else
-	dcb.b (\1-(*%\1))%\1,\2
-	endc
-	endm
-
-; ---------------------------------------------------------------------------
 ; Set a VRAM address via the VDP control port.
 ; input: 16-bit VRAM address, control port (default is ($C00004).l)
 ; ---------------------------------------------------------------------------
@@ -85,69 +72,63 @@ copyTilemap:	macro source,destination,width,height
 ; stop the Z80
 ; ---------------------------------------------------------------------------
 
-stopZ80:	macro
+stopZ80:	macros
 		move.w	#$100,(z80_bus_request).l
-		endm
 
 ; ---------------------------------------------------------------------------
 ; wait for Z80 to stop
 ; ---------------------------------------------------------------------------
 
 waitZ80:	macro
-	@wait:	btst	#0,(z80_bus_request).l
-		bne.s	@wait
+	\@$:	btst	#0,(z80_bus_request).l
+		bne.s	\@$
 		endm
 
 ; ---------------------------------------------------------------------------
 ; reset the Z80
 ; ---------------------------------------------------------------------------
 
-resetZ80:	macro
+resetZ80:	macros
 		move.w	#$100,(z80_reset).l
-		endm
 
-resetZ80a:	macro
+resetZ80a:	macros
 		move.w	#0,(z80_reset).l
-		endm
 
 ; ---------------------------------------------------------------------------
 ; start the Z80
 ; ---------------------------------------------------------------------------
 
-startZ80:	macro
+startZ80:	macros
 		move.w	#0,(z80_bus_request).l
-		endm
 
 ; ---------------------------------------------------------------------------
 ; disable interrupts
 ; ---------------------------------------------------------------------------
 
-disable_ints:	macro
+disable_ints:	macros
 		move	#$2700,sr
-		endm
 
 ; ---------------------------------------------------------------------------
 ; enable interrupts
 ; ---------------------------------------------------------------------------
 
-enable_ints:	macro
+enable_ints:	macros
 		move	#$2300,sr
-		endm
 
 ; ---------------------------------------------------------------------------
 ; long conditional jumps
 ; ---------------------------------------------------------------------------
 
 jhi:		macro loc
-		bls.s	@nojump
+		bls.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jcc:		macro loc
-		bcs.s	@nojump
+		bcs.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jhs:		macro loc
@@ -155,15 +136,15 @@ jhs:		macro loc
 		endm
 
 jls:		macro loc
-		bhi.s	@nojump
+		bhi.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jcs:		macro loc
-		bcc.s	@nojump
+		bcc.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jlo:		macro loc
@@ -171,51 +152,51 @@ jlo:		macro loc
 		endm
 
 jeq:		macro loc
-		bne.s	@nojump
+		bne.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jne:		macro loc
-		beq.s	@nojump
+		beq.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jgt:		macro loc
-		ble.s	@nojump
+		ble.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jge:		macro loc
-		blt.s	@nojump
+		blt.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jle:		macro loc
-		bgt.s	@nojump
+		bgt.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jlt:		macro loc
-		bge.s	@nojump
+		bge.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jpl:		macro loc
-		bmi.s	@nojump
+		bmi.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 jmi:		macro loc
-		bpl.s	@nojump
+		bpl.s	\@$
 		jmp	loc
-	@nojump:
+	\@$:
 		endm
 
 ; ---------------------------------------------------------------------------
@@ -243,13 +224,11 @@ out_of_range:	macro exit,pos
 ; (remember to enable SRAM in the header first!)
 ; ---------------------------------------------------------------------------
 
-gotoSRAM:	macro
+gotoSRAM:	macros
 		move.b	#1,($A130F1).l
-		endm
 
-gotoROM:	macro
+gotoROM:	macros
 		move.b	#0,($A130F1).l
-		endm
 
 ; ---------------------------------------------------------------------------
 ; compare the size of an index with ZoneCount constant
@@ -257,9 +236,14 @@ gotoROM:	macro
 ; input: index address, element size
 ; ---------------------------------------------------------------------------
 
-zonewarning:	macro loc,elementsize
-	@end:
-		if (@end-loc)-(ZoneCount*elementsize)<>0
-		inform 1,"Size of \loc ($%h) does not match ZoneCount ($\#ZoneCount).",(@end-loc)/elementsize
-		endc
+zonewarning:	macro loc, elementsize
+
+	local	_end, _locsz
+	_end:
+	_locsz:	= (_end-loc)/elementsize
+
+	if (_end-loc)-(ZoneCount*elementsize)<>0
+	inform 1,"Size of \loc ($\$_locsz\) does not match ZoneCount ($\#ZoneCount\)."
+	endif
+		
 		endm

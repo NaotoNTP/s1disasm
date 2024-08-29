@@ -64,7 +64,7 @@ Obj73_ShipMain:	; Routine 2
 		or.b	d0,obRender(a0)
 		jmp	(DisplaySprite).l
 ; ===========================================================================
-Obj73_ShipIndex:dc.w loc_18302-Obj73_ShipIndex
+Obj73_ShipIndex: dc.w loc_18302-Obj73_ShipIndex
 		dc.w loc_183AA-Obj73_ShipIndex
 		dc.w loc_184F6-Obj73_ShipIndex
 		dc.w loc_1852C-Obj73_ShipIndex

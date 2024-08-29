@@ -164,7 +164,7 @@ CStom_Types:
 		move.w	CStom_TypeIndex(pc,d0.w),d1
 		jmp	CStom_TypeIndex(pc,d1.w)
 ; ===========================================================================
-CStom_TypeIndex:dc.w CStom_Type00-CStom_TypeIndex
+CStom_TypeIndex: dc.w CStom_Type00-CStom_TypeIndex
 		dc.w CStom_Type01-CStom_TypeIndex
 		dc.w CStom_Type01-CStom_TypeIndex
 		dc.w CStom_Type03-CStom_TypeIndex

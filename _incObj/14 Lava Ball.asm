@@ -68,7 +68,7 @@ LBall_ChkDel:
 		out_of_range.w	DeleteObject
 		rts	
 ; ===========================================================================
-LBall_TypeIndex:dc.w LBall_Type00-LBall_TypeIndex, LBall_Type00-LBall_TypeIndex
+LBall_TypeIndex: dc.w LBall_Type00-LBall_TypeIndex, LBall_Type00-LBall_TypeIndex
 		dc.w LBall_Type00-LBall_TypeIndex, LBall_Type00-LBall_TypeIndex
 		dc.w LBall_Type04-LBall_TypeIndex, LBall_Type05-LBall_TypeIndex
 		dc.w LBall_Type06-LBall_TypeIndex, LBall_Type07-LBall_TypeIndex

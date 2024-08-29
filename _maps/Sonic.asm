@@ -61,8 +61,8 @@ ptr_MS_Warp4:	dc.w MS_Warp4-Map_Sonic_internal
 ptr_MS_Stop1:	dc.w MS_Stop1-Map_Sonic_internal
 ptr_MS_Stop2:	dc.w MS_Stop2-Map_Sonic_internal
 ptr_MS_Duck:	dc.w MS_Duck-Map_Sonic_internal
-ptr_MS_Balance1:dc.w MS_Balance1-Map_Sonic_internal
-ptr_MS_Balance2:dc.w MS_Balance2-Map_Sonic_internal
+ptr_MS_Balance1: dc.w MS_Balance1-Map_Sonic_internal
+ptr_MS_Balance2: dc.w MS_Balance2-Map_Sonic_internal
 ptr_MS_Float1:	dc.w MS_Float1-Map_Sonic_internal
 ptr_MS_Float2:	dc.w MS_Float2-Map_Sonic_internal
 ptr_MS_Float3:	dc.w MS_Float3-Map_Sonic_internal
@@ -77,7 +77,7 @@ ptr_MS_Push2:	dc.w MS_Push2-Map_Sonic_internal
 ptr_MS_Push3:	dc.w MS_Push3-Map_Sonic_internal
 ptr_MS_Push4:	dc.w MS_Push4-Map_Sonic_internal
 ptr_MS_Surf:	dc.w MS_Surf-Map_Sonic_internal
-ptr_MS_BubStand:dc.w MS_BubStand-Map_Sonic_internal
+ptr_MS_BubStand: dc.w MS_BubStand-Map_Sonic_internal
 ptr_MS_Burnt:	dc.w MS_Burnt-Map_Sonic_internal
 ptr_MS_Drown:	dc.w MS_Drown-Map_Sonic_internal
 ptr_MS_Death:	dc.w MS_Death-Map_Sonic_internal
@@ -90,7 +90,7 @@ ptr_MS_Float5:	dc.w MS_Float5-Map_Sonic_internal
 ptr_MS_Float6:	dc.w MS_Float6-Map_Sonic_internal
 ptr_MS_Injury:	dc.w MS_Injury-Map_Sonic_internal
 ptr_MS_GetAir:	dc.w MS_GetAir-Map_Sonic_internal
-ptr_MS_WaterSlide:dc.w MS_WaterSlide-Map_Sonic_internal
+ptr_MS_WaterSlide: dc.w MS_WaterSlide-Map_Sonic_internal
 
 MS_Null:	dc.b 0
 MS_Stand:	dc.b 4			; standing

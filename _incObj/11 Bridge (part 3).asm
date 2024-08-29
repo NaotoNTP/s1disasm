@@ -99,7 +99,7 @@ locret_76CA:
 ; ---------------------------------------------------------------------------
 Obj11_BendData:	incbin	"misc\ghzbend1.bin"
 		even
-Obj11_BendData2:incbin	"misc\ghzbend2.bin"
+Obj11_BendData2: incbin	"misc\ghzbend2.bin"
 		even
 
 ; ===========================================================================

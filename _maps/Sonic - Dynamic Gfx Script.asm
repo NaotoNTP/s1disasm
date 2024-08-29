@@ -148,8 +148,8 @@ SonPLC_Warp4:	dc.b 1,	$F3, $1A
 SonPLC_Stop1:	dc.b 2,	$53, $2A, $B3, $30
 SonPLC_Stop2:	dc.b 4,	$53, $3C, $73, $42, $13, $4A, 3, $4C
 SonPLC_Duck:	dc.b 4,	$13, $4D, $73, $4F, $23, $57, 3, $5A
-SonPLC_Balance1:dc.b 3,	$23, $5B, $23, $5E, $F3, $61
-SonPLC_Balance2:dc.b 3,	$B3, $71, $73, $7D, 0, $71
+SonPLC_Balance1: dc.b 3,	$23, $5B, $23, $5E, $F3, $61
+SonPLC_Balance2: dc.b 3,	$B3, $71, $73, $7D, 0, $71
 SonPLC_Float1:	dc.b 3,	$73, $85, $33, $8D, $23, $91
 SonPLC_Float2:	dc.b 1,	$83, $94
 SonPLC_Float3:	dc.b 3,	$73, $9D, 3, $A5, $33, $A6
@@ -164,7 +164,7 @@ SonPLC_Push2:	dc.b 3,	$84, $1C, $24, $25, $14, $28
 SonPLC_Push3:	dc.b 2,	$84, $2A, $74, $33
 SonPLC_Push4:	dc.b 3,	$84, $1C, $24, $3B, $14, $3E
 SonPLC_Surf:	dc.b 2,	$54, $40, $B4, $46
-SonPLC_BubStand:dc.b 3,	$84, $52, $34, $5B, 4, $5F
+SonPLC_BubStand: dc.b 3,	$84, $52, $34, $5B, 4, $5F
 SonPLC_Death:	dc.b 3,	$74, $60, $14, $68, $B4, $6A
 SonPLC_Drown:	dc.b 5,	$74, $76, $14, $7E, $54, $80, $34, $86,	4, $8A
 SonPLC_Burnt:	dc.b 5,	$74, $8B, $14, $7E, $54, $93, $34, $86,	4, $8A
@@ -175,5 +175,5 @@ SonPLC_Shrink4:	dc.b 1,	$54, $CA
 SonPLC_Shrink5:	dc.b 1,	$14, $D0
 SonPLC_Injury:	dc.b 3,	$B4, $D2, $14, $DE, $34, $E0
 SonPLC_GetAir:	dc.b 3,	$54, $E4, $B4, $EA, $10, $6D
-SonPLC_WaterSlide:dc.b 2, $F4, $F6, $25, 6
+SonPLC_WaterSlide: dc.b 2, $F4, $F6, $25, 6
 		even

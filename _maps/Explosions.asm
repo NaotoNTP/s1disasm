@@ -1,7 +1,7 @@
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - explosion from a badnik or monitor
 ; ---------------------------------------------------------------------------
-Map_ExplodeItem:dc.w byte_8ED0-Map_ExplodeItem, byte_8ED6-Map_ExplodeItem
+Map_ExplodeItem: dc.w byte_8ED0-Map_ExplodeItem, byte_8ED6-Map_ExplodeItem
 		dc.w byte_8EDC-Map_ExplodeItem, byte_8EE2-Map_ExplodeItem
 		dc.w byte_8EF7-Map_ExplodeItem
 byte_8ED0:	dc.b 1
@@ -24,7 +24,7 @@ byte_8EF7:	dc.b 4
 ; ---------------------------------------------------------------------------
 ; Sprite mappings - explosion from when	a boss is destroyed
 ; ---------------------------------------------------------------------------
-Map_ExplodeBomb:dc.w byte_8ED0-Map_ExplodeBomb
+Map_ExplodeBomb: dc.w byte_8ED0-Map_ExplodeBomb
 		dc.w byte_8F16-Map_ExplodeBomb
 		dc.w byte_8F1C-Map_ExplodeBomb
 		dc.w byte_8EE2-Map_ExplodeBomb

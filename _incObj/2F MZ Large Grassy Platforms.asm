@@ -98,7 +98,7 @@ LGrass_Types:
 ; End of function LGrass_Types
 
 ; ===========================================================================
-LGrass_TypeIndex:dc.w LGrass_Type00-LGrass_TypeIndex
+LGrass_TypeIndex: dc.w LGrass_Type00-LGrass_TypeIndex
 		dc.w LGrass_Type01-LGrass_TypeIndex
 		dc.w LGrass_Type02-LGrass_TypeIndex
 		dc.w LGrass_Type03-LGrass_TypeIndex

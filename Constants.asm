@@ -47,7 +47,7 @@ TrackSavedDuration:	equ $F		; All tracks
 TrackSavedDAC:		equ $10		; DAC only
 TrackFreq:		equ $10		; FM/PSG only (2 bytes)
 TrackNoteTimeout:	equ $12		; FM/PSG only
-TrackNoteTimeoutMaster:equ $13		; FM/PSG only
+TrackNoteTimeoutMaster: equ $13		; FM/PSG only
 TrackModulationPtr:	equ $14		; FM/PSG only (4 bytes)
 TrackModulationWait:	equ $18		; FM/PSG only
 TrackModulationSpeed:	equ $19		; FM/PSG only
@@ -234,7 +234,7 @@ sfx_Shield:	equ ((ptr_sndAF-SoundIndex)/4)+sfx__First
 sfx_Saw:	equ ((ptr_sndB0-SoundIndex)/4)+sfx__First
 sfx_Electric:	equ ((ptr_sndB1-SoundIndex)/4)+sfx__First
 sfx_Drown:	equ ((ptr_sndB2-SoundIndex)/4)+sfx__First
-sfx_Flamethrower:equ ((ptr_sndB3-SoundIndex)/4)+sfx__First
+sfx_Flamethrower: equ ((ptr_sndB3-SoundIndex)/4)+sfx__First
 sfx_Bumper:	equ ((ptr_sndB4-SoundIndex)/4)+sfx__First
 sfx_Ring:	equ ((ptr_sndB5-SoundIndex)/4)+sfx__First
 sfx_SpikesMove:	equ ((ptr_sndB6-SoundIndex)/4)+sfx__First

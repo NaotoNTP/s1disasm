@@ -83,7 +83,7 @@ Obj7A_ShipMain:	; Routine 2
 		or.b	d0,obRender(a0)
 		jmp	(DisplaySprite).l
 ; ===========================================================================
-Obj7A_ShipIndex:dc.w loc_189B8-Obj7A_ShipIndex
+Obj7A_ShipIndex: dc.w loc_189B8-Obj7A_ShipIndex
 		dc.w loc_18A5E-Obj7A_ShipIndex
 		dc.w Obj7A_MakeBall-Obj7A_ShipIndex
 		dc.w loc_18B48-Obj7A_ShipIndex

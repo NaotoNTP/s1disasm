@@ -154,7 +154,7 @@ FFloor_BreakSnd:
 		jsr	(PlaySound_Special).l	; play smashing sound
 		jmp	(DisplaySprite).l
 ; ===========================================================================
-FFloor_FragSpeed:dc.w $80, 0
+FFloor_FragSpeed: dc.w $80, 0
 		dc.w $120, $C0
 FFloor_FragPos:	dc.w -8, -8
 		dc.w $10, 0
