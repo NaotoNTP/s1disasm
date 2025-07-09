@@ -2,10 +2,25 @@
 ; all RAM addresses are run through this function to allow them to work in both 16-bit and 32-bit addressing modes
 ramaddr function x,(-(x&$80000000)<<1)|x
 
+; NLZ Configuration Constants.
+NLZ_CONFIG	equ	4					; Set this value to one of the following values to configure the decompressor for your desired module size.
+								; 1 = $200 byte modules; 2 = $400 byte modules; 3 = $800 byte modules; 4 = $1000 byte modules; 5 = $2000 byte modules.
+NLZ_BUFFER_SIZE	equ	$100<<NLZ_CONFIG			; Size of the decompression buffer (in bytes).
+NLZ_QUEUE_SIZE	equ	24					; Number of slots in the decompression queue.
+
+; NLZ Queue Entry Offsets.
+nque:	struct	dots
+	next:	ds.w	1					; Word-size pointer to the next entry in the queue.
+	src:	ds.l	1					; Source address (ROM) of the NLZ archive to be decompressed.
+	dest:	ds.w	1					; Destination address (VRAM) to transfer the decompressed art to. 
+	size:	ds.b	0					; Size of a single queue entry in bytes.
+	endstruct
+
 ; Variables (v) and Flags (f)
 
 	phase ramaddr ( $FFFF0000 )
 v_ram_start:
+nlzLgBuffer:
 
 v_128x128:		ds.b	$100*$80	; 128x128 tile mappings ($100 chunks)
 v_128x128_end:
@@ -14,7 +29,34 @@ v_lvllayout:		ds.b	$1000		; level and background layouts
 v_collision1:		ds.b	$300
 v_collision2:		ds.b	$300
 
-			ds.b	$1200		; unused
+		;	ds.b	$1200		; unused
+nlzBuffer:		ds.b	NLZ_BUFFER_SIZE	; The main buffer used for decompressing moduled NLZ archives in the decompression queue.
+nlzQueue:		ds.b	nque.size*NLZ_QUEUE_SIZE	
+
+nlzQueueHead:		ds.w	1		; Word-size pointer to the first occupied entry in the queue.
+nlzQueueTail:		ds.w	1		; Word-size pointer to the last occupied entry in the queue.
+nlzQueueFree:		ds.w	1		; Word-size pointer to the first free entry in the queue.
+nlzLastModSize:		ds.w	1		; Size of the last module in the current archive, in words.
+
+nlzBookmarkFlag:	ds.b	1		; Flag used to indicate if a bookmark should be set upon returning from VBlank.
+nlzModuleCount:		ds.b	1		; Number of modules left to decompress in the current archive.
+nlzModuleConfig:	ds.w	1		; Offset into the table that defines the configuration of the current archive.
+
+nlzVRAMDest:		ds.w	1		; VRAM destination for the current module to be transfered to.
+nlzBufferPtr:		ds.l	1		; The address of the decompression buffer to use for the current archive.
+nlzNextModule:		ds.l	1		; The address of the next module to be decompressed.
+nlzVIntSP:		ds.l	1		; The address that the stack pointer was set to immediately after a VBlank interrupt.
+
+nlzBookmarkDn:		ds.w	4		; Space to backup the data register when setting a bookmark. 
+nlzBookmarkAn:		ds.l	4		; Space to backup the address register when setting a bookmark. 
+nlzBookmarkSR:		ds.w	1		; Space to backup the status register flags when setting a bookmark. 
+nlzBookmarkPC:		ds.l	1		; Space to backup the program counter address when setting a bookmark.
+
+VDP_Command_Buffer	ds.b	$FC		; $FC bytes, stores 18 VDP commands to issue next time ProcessDMAQueue is called.
+VDP_Command_Buffer_Slot	ds.l	1		; Longword, stores the next address for the DMA queue.
+
+			ds.b	8
+
 v_bgscroll_buffer:	ds.b	$200		; background scroll buffer
 v_ngfx_buffer:		ds.b	$200		; Nemesis graphics decompression buffer
 v_ngfx_buffer_end:

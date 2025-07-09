@@ -352,6 +352,7 @@ GameInit:
 		dbf	d6,.clearRAM	; clear RAM ($0000-$FDFF)
 
 		bsr.w	VDPSetupGame
+		bsr.w	InitDMAQueue
 		bsr.w	DACDriverLoad
 		bsr.w	JoypadInit
 		move.b	#id_Sega,(v_gamemode).w ; set Game Mode to Sega Screen
@@ -702,11 +703,7 @@ VBla_08:
 
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		tst.b	(f_sonframechg).w ; has Sonic's sprite changed?
-		beq.s	.nochg		; if not, branch
-
-		writeVRAM	v_sgfx_buffer,$2E0,ArtTile_Sonic*$20 ; load new Sonic gfx
-		move.b	#0,(f_sonframechg).w
+		jsr	ProcessDMAQueue(pc)
 
 .nochg:
 		startZ80
@@ -751,11 +748,7 @@ VBla_0A:
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		startZ80
 		bsr.w	PalCycle_SS
-		tst.b	(f_sonframechg).w ; has Sonic's sprite changed?
-		beq.s	.nochg		; if not, branch
-
-		writeVRAM	v_sgfx_buffer,$2E0,ArtTile_Sonic*$20 ; load new Sonic gfx
-		move.b	#0,(f_sonframechg).w
+		jsr	ProcessDMAQueue(pc)
 
 .nochg:
 		tst.w	(v_demolength).w	; is there time left on the demo?
@@ -783,10 +776,7 @@ VBla_0C:
 		move.w	(v_hbla_hreg).w,(a5)
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		tst.b	(f_sonframechg).w
-		beq.s	.nochg
-		writeVRAM	v_sgfx_buffer,$2E0,ArtTile_Sonic*$20
-		move.b	#0,(f_sonframechg).w
+		jsr	ProcessDMAQueue(pc)
 
 .nochg:
 		startZ80
@@ -822,10 +812,7 @@ VBla_16:
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		startZ80
-		tst.b	(f_sonframechg).w
-		beq.s	.nochg
-		writeVRAM	v_sgfx_buffer,$2E0,ArtTile_Sonic*$20
-		move.b	#0,(f_sonframechg).w
+		jsr	ProcessDMAQueue(pc)
 
 .nochg:
 		tst.w	(v_demolength).w
@@ -1104,7 +1091,7 @@ TilemapToVRAM:
 		move.l	#$800000,d4
 
 Tilemap_Line:
-		move.l	d0,4(a6)	; move d0 to VDP_control_port
+		move.l	d0,4(a6)	; move d0 to vdp_control_port
 		move.w	d1,d3
 
 Tilemap_Cell:
@@ -1116,7 +1103,8 @@ Tilemap_Cell:
 ; End of function TilemapToVRAM
 
 		include	"_inc/Nemesis Decompression.asm"
-
+		include	"_inc/NLZ Decompression Library.asm"
+		include	"_inc/DMA-Queue.asm"
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to load pattern load cues (aka to queue pattern load requests)
@@ -2039,6 +2027,7 @@ GM_Sega:
 		andi.b	#$BF,d0
 		move.w	d0,(vdp_control_port).l
 		bsr.w	ClearScreen
+		ResetDMAQueue
 		locVRAM	0
 		lea	(Nem_SegaLogo).l,a0 ; load Sega	logo patterns
 		bsr.w	NemDec
@@ -2113,6 +2102,7 @@ GM_Title:
 		move.w	#$8720,(a6)	; set background colour (palette line 2, entry 0)
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
+		ResetDMAQueue
 
 		clearRAM v_objspace,v_objend
 
@@ -2795,6 +2785,8 @@ Level_ClrRam:
 		move.w	#$8720,(a6)		; set background colour (line 3; colour 0)
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
+		ResetDMAQueue
+
 		cmpi.b	#id_LZ,(v_zone).w ; is level LZ?
 		bne.s	Level_LoadPal	; if not, branch
 
@@ -3340,6 +3332,8 @@ loc_47D4:
 		lea	(Nem_TitleCard).l,a0 ; load title card patterns
 		bsr.w	NemDec
 		jsr	(Hud_Base).l
+		ResetDMAQueue
+		
 		enable_ints
 		moveq	#palid_SSResult,d0
 		bsr.w	PalLoad2	; load results screen palette
@@ -3679,6 +3673,7 @@ GM_Continue:
 		move.w	#$8004,(a6)	; 8 colour mode
 		move.w	#$8700,(a6)	; background colour
 		bsr.w	ClearScreen
+		ResetDMAQueue
 
 		clearRAM v_objspace,v_objend
 
@@ -3790,6 +3785,8 @@ GM_Ending:
 		move.w	#$8720,(a6)		; set background colour (line 3; colour 0)
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
+		ResetDMAQueue
+
 		move.w	#30,(v_air).w
 		move.w	#id_EndZ<<8,(v_zone).w ; set level number to 0600 (extra flowers)
 		cmpi.b	#6,(v_emeralds).w ; do you have all 6 emeralds?
@@ -4003,6 +4000,7 @@ GM_Credits:
 		move.w	#$8720,(a6)		; set background colour (line 3; colour 0)
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
+		ResetDMAQueue
 
 		clearRAM v_objspace,v_objend
 
@@ -4122,6 +4120,7 @@ TryAgainEnd:
 		move.w	#$8720,(a6)	; set background colour (line 3; colour 0)
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
+		ResetDMAQueue
 
 		clearRAM v_objspace,v_objend
 
@@ -8468,7 +8467,7 @@ loc_1C962:
 
 ; ===========================================================================
 
-		include	"_inc/HUD (part 2).asm"
+		include	"_inc/HUD (part 2).asm"		
 
 Art_Hud:	binclude	"artunc/HUD Numbers.bin" ; 8x16 pixel numbers on HUD
 		even
@@ -9234,7 +9233,7 @@ ObjPos_Null:	dc.b $FF, $FF, 0, 0, 0,	0
 SoundDriver:	include "s1.sounddriver.asm"
 
 ; end of 'ROM'
-		even
+
 EndOfRom:
 
 		END
