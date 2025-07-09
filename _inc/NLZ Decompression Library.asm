@@ -105,7 +105,7 @@ NLZ_DecompressFromQueue:
 		bne.s	.resumeFromBookmark			; If so, branch and pick up where we left off with decompressing the current module.
 
 		subq.b	#1,(nlzModuleCount).w			; Decrement the module counter.		
-		bvc.w	.decNextModule				; If the counter did not underflow, decompress the next full module.
+		bcc.w	.decNextModule				; If the counter did not underflow, decompress the next full module.
 
 .processNextEntry:
 		clr.b	(nlzModuleCount).w			; Clear the module counter.

@@ -353,6 +353,7 @@ GameInit:
 
 		bsr.w	VDPSetupGame
 		bsr.w	InitDMAQueue
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	DACDriverLoad
 		bsr.w	JoypadInit
 		move.b	#id_Sega,(v_gamemode).w ; set Game Mode to Sega Screen
@@ -577,6 +578,7 @@ Art_Text:	binclude	"artunc/menutext.bin" ; text used in level select and debug m
 ; ---------------------------------------------------------------------------
 
 VBlank:
+		move.l	sp,(nlzVIntSP).w
 		movem.l	d0-a6,-(sp)
 		tst.b	(v_vbla_routine).w
 		beq.s	VBla_00
@@ -661,7 +663,7 @@ VBla_14:
 		subq.w	#1,(v_demolength).w
 
 .end:
-		rts	
+		bra.w	NLZ_SetBookmark
 ; ===========================================================================
 
 VBla_04:
@@ -714,6 +716,7 @@ VBla_08:
 		cmpi.b	#96,(v_hbla_line).w
 		bhs.s	Demo_Time
 		move.b	#1,(f_doupdatesinhblank).w
+		bsr.w	NLZ_SetBookmark
 		addq.l	#4,sp
 		bra.w	VBla_Exit
 
@@ -756,7 +759,7 @@ VBla_0A:
 		subq.w	#1,(v_demolength).w	; subtract 1 from time left in demo
 
 .end:
-		rts	
+		bra.w	NLZ_SetBookmark	
 ; ===========================================================================
 
 VBla_0C:
@@ -788,7 +791,7 @@ VBla_0C:
 		jsr	(AnimateLevelGfx).l
 		jsr	(HUD_Update).l
 		bsr.w	sub_1642
-		rts	
+		bra.w	NLZ_SetBookmark
 ; ===========================================================================
 
 VBla_0E:
@@ -820,7 +823,7 @@ VBla_16:
 		subq.w	#1,(v_demolength).w
 
 .end:
-		rts	
+		bra.w	NLZ_SetBookmark
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -2028,6 +2031,8 @@ GM_Sega:
 		move.w	d0,(vdp_control_port).l
 		bsr.w	ClearScreen
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
+
 		locVRAM	0
 		lea	(Nem_SegaLogo).l,a0 ; load Sega	logo patterns
 		bsr.w	NemDec
@@ -2103,6 +2108,7 @@ GM_Title:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -2225,6 +2231,7 @@ Tit_LoadText:
 
 Tit_MainLoop:
 		move.b	#4,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		bsr.w	DeformLayers
@@ -2486,6 +2493,7 @@ GotoDemo:
 
 loc_33B6:
 		move.b	#4,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	DeformLayers
 		bsr.w	PaletteCycle
@@ -2786,6 +2794,7 @@ Level_ClrRam:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
 
 		cmpi.b	#id_LZ,(v_zone).w ; is level LZ?
 		bne.s	Level_LoadPal	; if not, branch
@@ -2844,6 +2853,7 @@ Level_PlayBgm:
 
 Level_TtlCardLoop:
 		move.b	#$C,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
@@ -2953,6 +2963,7 @@ Level_Delay:
 
 Level_DelayLoop:
 		move.b	#8,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		dbf	d1,Level_DelayLoop
 
@@ -2985,6 +2996,7 @@ Level_StartGame:
 Level_MainLoop:
 		bsr.w	PauseGame
 		move.b	#8,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		addq.w	#1,(v_framecount).w ; add 1 to level timer
 		bsr.w	MoveSonicInDemo
@@ -3048,6 +3060,7 @@ Level_FadeDemo:
 
 Level_FDLoop:
 		move.b	#8,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	MoveSonicInDemo
 		jsr	(ExecuteObjects).l
@@ -3272,6 +3285,7 @@ SS_NoDebug:
 SS_MainLoop:
 		bsr.w	PauseGame
 		move.b	#$A,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	MoveSonicInDemo
 		move.w	(v_jpadhold1).w,(v_jpadhold2).w
@@ -3306,6 +3320,7 @@ SS_Finish:
 
 SS_FinLoop:
 		move.b	#$16,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	MoveSonicInDemo
 		move.w	(v_jpadhold1).w,(v_jpadhold2).w
@@ -3333,7 +3348,8 @@ loc_47D4:
 		bsr.w	NemDec
 		jsr	(Hud_Base).l
 		ResetDMAQueue
-		
+		jsr	NLZ_InitializeQueue.w
+
 		enable_ints
 		moveq	#palid_SSResult,d0
 		bsr.w	PalLoad2	; load results screen palette
@@ -3356,6 +3372,7 @@ loc_47D4:
 SS_NormalExit:
 		bsr.w	PauseGame
 		move.b	#$C,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
@@ -3674,6 +3691,7 @@ GM_Continue:
 		move.w	#$8700,(a6)	; background colour
 		bsr.w	ClearScreen
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -3715,6 +3733,7 @@ GM_Continue:
 
 Cont_MainLoop:
 		move.b	#$16,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		cmpi.b	#6,(v_player+obRoutine).w
 		bhs.s	loc_4DF2
@@ -3786,6 +3805,7 @@ GM_Ending:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
 
 		move.w	#30,(v_air).w
 		move.w	#id_EndZ<<8,(v_zone).w ; set level number to 0600 (extra flowers)
@@ -3847,6 +3867,7 @@ End_LoadSonic:
 		move.b	#0,(f_timecount).w
 		move.w	#1800,(v_demolength).w
 		move.b	#$18,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		move.w	(v_vdp_buffer1).w,d0
 		ori.b	#$40,d0
@@ -3861,6 +3882,7 @@ End_LoadSonic:
 End_MainLoop:
 		bsr.w	PauseGame
 		move.b	#$18,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		addq.w	#1,(v_framecount).w
 		bsr.w	End_MoveSonic
@@ -3892,6 +3914,7 @@ End_ChkEmerald:
 End_AllEmlds:
 		bsr.w	PauseGame
 		move.b	#$18,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		addq.w	#1,(v_framecount).w
 		bsr.w	End_MoveSonic
@@ -4001,6 +4024,7 @@ GM_Credits:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -4034,6 +4058,7 @@ Cred_SkipObjGfx:
 
 Cred_WaitLoop:
 		move.b	#4,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	RunPLC
 		tst.w	(v_demolength).w ; have 2 seconds elapsed?
@@ -4121,6 +4146,7 @@ TryAgainEnd:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
+		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -4144,6 +4170,7 @@ TryAgainEnd:
 TryAg_MainLoop:
 		bsr.w	PauseGame
 		move.b	#4,(v_vbla_routine).w
+	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
