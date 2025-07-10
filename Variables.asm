@@ -6,7 +6,7 @@ ramaddr function x,(-(x&$80000000)<<1)|x
 NLZ_CONFIG	equ	4					; Set this value to one of the following values to configure the decompressor for your desired module size.
 								; 1 = $200 byte modules; 2 = $400 byte modules; 3 = $800 byte modules; 4 = $1000 byte modules; 5 = $2000 byte modules.
 NLZ_BUFFER_SIZE	equ	$100<<NLZ_CONFIG			; Size of the decompression buffer (in bytes).
-NLZ_QUEUE_SIZE	equ	24					; Number of slots in the decompression queue.
+NLZ_QUEUE_SIZE	equ	32					; Number of slots in the decompression queue.
 
 ; NLZ Queue Entry Offsets.
 nque:	struct	dots
@@ -36,7 +36,7 @@ nlzQueue:		ds.b	nque.size*NLZ_QUEUE_SIZE
 nlzQueueHead:		ds.w	1		; Word-size pointer to the first occupied entry in the queue.
 nlzQueueTail:		ds.w	1		; Word-size pointer to the last occupied entry in the queue.
 nlzQueueFree:		ds.w	1		; Word-size pointer to the first free entry in the queue.
-nlzLastModSize:		ds.w	1		; Size of the last module in the current archive, in words.
+nlzLastModSize		ds.w	1		; Size of the last module in the current archive, in words. (Can also be used as a flag to indicate when the last module in an archive has been decompressed, as it gets cleared upon completion).
 
 nlzBookmarkFlag:	ds.b	1		; Flag used to indicate if a bookmark should be set upon returning from VBlank.
 nlzModuleCount:		ds.b	1		; Number of modules left to decompress in the current archive.
@@ -55,7 +55,7 @@ nlzBookmarkPC:		ds.l	1		; Space to backup the program counter address when setti
 VDP_Command_Buffer	ds.b	$FC		; $FC bytes, stores 18 VDP commands to issue next time ProcessDMAQueue is called.
 VDP_Command_Buffer_Slot	ds.l	1		; Longword, stores the next address for the DMA queue.
 
-			ds.b	8
+			ds.b	$2C8
 
 v_bgscroll_buffer:	ds.b	$200		; background scroll buffer
 v_ngfx_buffer:		ds.b	$200		; Nemesis graphics decompression buffer
@@ -63,8 +63,6 @@ v_ngfx_buffer_end:
 v_spritequeue:		ds.b	$400		; sprite display queue, in order of priority
 v_16x16:		ds.b	$1800		; 16x16 tile mappings
 
-v_sgfx_buffer:		ds.b	$2E0		; buffered Sonic graphics ($17 cells)
-			ds.b	$20		; unused
 v_tracksonic:		ds.b	$100		; position tracking data for Sonic
 v_hscrolltablebuffer:	ds.b	$380		; scrolling table data
 v_hscrolltablebuffer_end:

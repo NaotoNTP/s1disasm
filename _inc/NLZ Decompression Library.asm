@@ -137,7 +137,7 @@ NLZ_DecompressFromQueue:
 
 .isModuled:
 		move.w	d0,(nlzModuleConfig).w			; Save the the module configuration index.
-	;	move.l	a0,(nlzNextModule).w			; Save the address of the beginning of the datastream as the current source address.
+		move.l	a0,(nlzNextModule).w			; Save the address of the beginning of the datastream as the current source address.
 		move.l	a1,(nlzBufferPtr).w			; Save the address of the decompression buffer we want to use.
 		bra.s	.decModule				; Branch ahead and decompress the first module.
 
@@ -180,6 +180,7 @@ NLZ_DecompressFromQueue:
 		tst.b	(nlzModuleCount).w			; Are we getting ready to transfer the last module?
 		bne.s	.fullModule				; If not, branch to queue up the transfer of a full module to VRAM.
 		move.w	(nlzLastModSize).w,d3			; Otherwise, load the size of the last module as the transfer length.
+		clr.w	(nlzLastModSize).w			; Clear the last module size to signal that the archive has been fully decompressed.
 		bra.w	QueueDMATransfer			; Jump to the DMA Queue routine and exit.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
