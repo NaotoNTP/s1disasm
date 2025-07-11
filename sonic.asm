@@ -578,7 +578,7 @@ Art_Text:	binclude	"artunc/menutext.bin" ; text used in level select and debug m
 ; ---------------------------------------------------------------------------
 
 VBlank:
-		move.l	sp,(nlzVIntSP).w
+	;	move.l	sp,(nlzVIntSP).w
 		movem.l	d0-a6,-(sp)
 		tst.b	(v_vbla_routine).w
 		beq.s	VBla_00
@@ -1167,11 +1167,11 @@ NewPLC:
 
 ; LoadPLC:
 AddPLC:
-		movem.l	d2-d3/a0-a2,-(sp)
+		movem.l	d1-d3/a0-a2,-(sp)
 		lea	(ArtLoadCues).l,a0
 		add.w	d0,d0
 		move.w	(a0,d0.w),d0
-		lea	(a0,d0.w),a2		; jump to relevant PLC
+		lea	(a0,d0.w),a0		; jump to relevant PLC
 
 .copytoRAM:
 		move.w	(a0)+,d0	; get length of PLC
@@ -1184,7 +1184,7 @@ AddPLC:
 		dbf	d0,.loop	; repeat for length of PLC
 
 .skip:
-		movem.l	(sp)+,d2-d3/a0-a2 ; a1=object
+		movem.l	(sp)+,d1-d3/a0-a2 ; a1=object
 		rts	
 
 ;		movem.l	a1-a2,-(sp)
@@ -2847,8 +2847,7 @@ Level_NoMusicFade:
 		disable_ints
 
 	;	ResetDMAQueue
-		
-		
+	
 		move.w	#ArtTile_Title_Card*$20,d2
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
 		jsr	Queue_KosPlus_Module.w
@@ -2895,7 +2894,6 @@ Level_ClrRam:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
-	;	
 
 		cmpi.b	#id_LZ,(v_zone).w ; is level LZ?
 		bne.s	Level_LoadPal	; if not, branch
@@ -2963,10 +2961,10 @@ Level_TtlCardLoop:
 		move.w	(v_ttlcardact+obX).w,d0
 		cmp.w	(v_ttlcardact+card_mainX).w,d0 ; has title card sequence finished?
 		bne.s	Level_TtlCardLoop ; if not, branch
-		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-		bne.s	Level_TtlCardLoop ; if yes, branch
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	Level_TtlCardLoop ; if yes, branch
+		tst.w	(KosPlus_modules_left).w
+		bne.s	Level_TtlCardLoop
+		tst.w	(KosPlus_decomp_queue_count).w
+		bne.s	Level_TtlCardLoop
 		jsr	(Hud_Base).l	; load basic HUD gfx
 
 Level_SkipTtlCard:
@@ -3100,8 +3098,9 @@ Level_StartGame:
 Level_MainLoop:
 		bsr.w	PauseGame
 		move.b	#8,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		addq.w	#1,(v_framecount).w ; add 1 to level timer
 		bsr.w	MoveSonicInDemo
 		bsr.w	LZWaterFeatures
@@ -3389,8 +3388,9 @@ SS_NoDebug:
 SS_MainLoop:
 		bsr.w	PauseGame
 		move.b	#$A,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		bsr.w	MoveSonicInDemo
 		move.w	(v_jpadhold1).w,(v_jpadhold2).w
 		jsr	(ExecuteObjects).l
@@ -3452,16 +3452,16 @@ loc_47D4:
 		ResetDMAQueue
 		
 		
-		move	#ArtTile_Title_Card*$20,d1
+		move	#ArtTile_Title_Card*$20,d2
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
-		jsr	NLZ_AddArtToQueue.w
+		jsr	Queue_KosPlus_Module.w
 	;	bsr.w	NemDec
 	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	NLZ_FlushBuffer.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 
 		enable_ints
 		moveq	#palid_SSResult,d0
@@ -3485,8 +3485,9 @@ loc_47D4:
 SS_NormalExit:
 		bsr.w	PauseGame
 		move.b	#$C,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
 	;	bsr.w	RunPLC
@@ -3860,8 +3861,9 @@ GM_Continue:
 
 Cont_MainLoop:
 		move.b	#$16,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		cmpi.b	#6,(v_player+obRoutine).w
 		bhs.s	loc_4DF2
 		disable_ints
@@ -4009,8 +4011,9 @@ End_LoadSonic:
 End_MainLoop:
 		bsr.w	PauseGame
 		move.b	#$18,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		addq.w	#1,(v_framecount).w
 		bsr.w	End_MoveSonic
 		jsr	(ExecuteObjects).l
@@ -4155,16 +4158,16 @@ GM_Credits:
 
 		clearRAM v_objspace,v_objend
 
-		move.w	#ArtTile_Credits_Font*$20,d1
-		lea	(Nem_CreditText).l,a1 ;	load credits alphabet patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	NLZ_FlushBuffer.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;		move.w	#ArtTile_Credits_Font*$20,d1
+;		lea	(Nem_CreditText).l,a1 ;	load credits alphabet patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;	
+;.loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 
 		clearRAM v_pal_dry_dup,v_pal_dry_dup+16*4*2
 
@@ -8642,7 +8645,7 @@ Art_LivesNums:	binclude	"artunc/Lives Counter Numbers.bin" ; 8x8 pixel numbers o
 
 		align	$200
 		if Revision=0
-Nem_SegaLogo:	binclude	"artnlz/Sega Logo.nlz"	; large Sega logo
+Nem_SegaLogo:	binclude	"artkospm/Sega Logo.kospm"	; large Sega logo
 		even
 Eni_SegaLogo:	binclude	"tilemaps/Sega Logo.eni" ; large Sega logo (mappings)
 		even
@@ -8650,22 +8653,22 @@ Eni_SegaLogo:	binclude	"tilemaps/Sega Logo.eni" ; large Sega logo (mappings)
 		rept $300
 			dc.b	$FF
 		endm
-Nem_SegaLogo:	binclude	"artnlz/Sega Logo (JP1).nlz" ; large Sega logo
+Nem_SegaLogo:	binclude	"artkospm/Sega Logo (JP1).kospm" ; large Sega logo
 			even
 Eni_SegaLogo:	binclude	"tilemaps/Sega Logo (JP1).eni" ; large Sega logo (mappings)
 			even
 		endif
 Eni_Title:	binclude	"tilemaps/Title Screen.eni" ; title screen foreground (mappings)
 		even
-Nem_TitleFg:	binclude	"artnlz/Title Screen Foreground.nlz"
+Nem_TitleFg:	binclude	"artkospm/Title Screen Foreground.kospm"
 		even
-Nem_TitleSonic:	binclude	"artnlz/Title Screen Sonic.nlz"
+Nem_TitleSonic:	binclude	"artkospm/Title Screen Sonic.kospm"
 		even
-Nem_TitleTM:	binclude	"artnlz/Title Screen TM.nlz"
+Nem_TitleTM:	binclude	"artkospm/Title Screen TM.kospm"
 		even
 Eni_JapNames:	binclude	"tilemaps/Hidden Japanese Credits.eni" ; Japanese credits (mappings)
 		even
-Nem_JapNames:	binclude	"artnlz/Hidden Japanese Credits.nlz"
+Nem_JapNames:	binclude	"artkospm/Hidden Japanese Credits.kospm"
 		even
 
 Map_Sonic:	include	"_maps/Sonic.asm"
@@ -8680,23 +8683,23 @@ Art_Sonic:	binclude	"artunc/Sonic.bin"	; Sonic
 ; Compressed graphics - various
 ; ---------------------------------------------------------------------------
 		if Revision=0
-Nem_Smoke:	binclude	"artnlz/Unused - Smoke.nlz"
+Nem_Smoke:	binclude	"artkospm/Unused - Smoke.kospm"
 		even
-Nem_SyzSparkle:	binclude	"artnlz/Unused - SYZ Sparkles.nlz"
+Nem_SyzSparkle:	binclude	"artkospm/Unused - SYZ Sparkles.kospm"
 		even
 		endif
-Nem_Shield:	binclude	"artnlz/Shield.nlz"
+Nem_Shield:	binclude	"artkospm/Shield.kospm"
 		even
-Nem_Stars:	binclude	"artnlz/Invincibility Stars.nlz"
+Nem_Stars:	binclude	"artkospm/Invincibility Stars.kospm"
 		even
 		if Revision=0
-Nem_LzSonic:	binclude	"artnlz/Unused - LZ Sonic.nlz" ; Sonic holding his breath
+Nem_LzSonic:	binclude	"artkospm/Unused - LZ Sonic.kospm" ; Sonic holding his breath
 		even
-Nem_UnkFire:	binclude	"artnlz/Unused - Fireball.nlz" ; unused fireball
+Nem_UnkFire:	binclude	"artkospm/Unused - Fireball.kospm" ; unused fireball
 		even
-Nem_Warp:	binclude	"artnlz/Unused - SStage Flash.nlz" ; entry to special stage flash
+Nem_Warp:	binclude	"artkospm/Unused - SStage Flash.kospm" ; entry to special stage flash
 		even
-Nem_Goggle:	binclude	"artnlz/Unused - Goggles.nlz" ; unused goggles
+Nem_Goggle:	binclude	"artkospm/Unused - Goggles.kospm" ; unused goggles
 		even
 		endif
 
@@ -8705,300 +8708,300 @@ Map_SSWalls:	include	"_maps/SS Walls.asm"
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - special stage
 ; ---------------------------------------------------------------------------
-Nem_SSWalls:	binclude	"artnlz/Special Walls.nlz" ; special stage walls
+Nem_SSWalls:	binclude	"artkospm/Special Walls.kospm" ; special stage walls
 		even
 Eni_SSBg1:	binclude	"tilemaps/SS Background 1.eni" ; special stage background (mappings)
 		even
-Nem_SSBgFish:	binclude	"artnlz/Special Birds & Fish.nlz" ; special stage birds and fish background
+Nem_SSBgFish:	binclude	"artkospm/Special Birds & Fish.kospm" ; special stage birds and fish background
 		even
 Eni_SSBg2:	binclude	"tilemaps/SS Background 2.eni" ; special stage background (mappings)
 		even
-Nem_SSBgCloud:	binclude	"artnlz/Special Clouds.nlz" ; special stage clouds background
+Nem_SSBgCloud:	binclude	"artkospm/Special Clouds.kospm" ; special stage clouds background
 		even
-Nem_SSGOAL:	binclude	"artnlz/Special GOAL.nlz" ; special stage GOAL block
+Nem_SSGOAL:	binclude	"artkospm/Special GOAL.kospm" ; special stage GOAL block
 		even
-Nem_SSRBlock:	binclude	"artnlz/Special R.nlz"	; special stage R block
+Nem_SSRBlock:	binclude	"artkospm/Special R.kospm"	; special stage R block
 		even
-Nem_SS1UpBlock:	binclude	"artnlz/Special 1UP.nlz" ; special stage 1UP block
+Nem_SS1UpBlock:	binclude	"artkospm/Special 1UP.kospm" ; special stage 1UP block
 		even
-Nem_SSEmStars:	binclude	"artnlz/Special Emerald Twinkle.nlz" ; special stage stars from a collected emerald
+Nem_SSEmStars:	binclude	"artkospm/Special Emerald Twinkle.kospm" ; special stage stars from a collected emerald
 		even
-Nem_SSRedWhite:	binclude	"artnlz/Special Red-White.nlz" ; special stage red/white block
+Nem_SSRedWhite:	binclude	"artkospm/Special Red-White.kospm" ; special stage red/white block
 		even
-Nem_SSZone1:	binclude	"artnlz/Special ZONE1.nlz" ; special stage ZONE1 block
+Nem_SSZone1:	binclude	"artkospm/Special ZONE1.kospm" ; special stage ZONE1 block
 		even
-Nem_SSZone2:	binclude	"artnlz/Special ZONE2.nlz" ; ZONE2 block
+Nem_SSZone2:	binclude	"artkospm/Special ZONE2.kospm" ; ZONE2 block
 		even
-Nem_SSZone3:	binclude	"artnlz/Special ZONE3.nlz" ; ZONE3 block
+Nem_SSZone3:	binclude	"artkospm/Special ZONE3.kospm" ; ZONE3 block
 		even
-Nem_SSZone4:	binclude	"artnlz/Special ZONE4.nlz" ; ZONE4 block
+Nem_SSZone4:	binclude	"artkospm/Special ZONE4.kospm" ; ZONE4 block
 		even
-Nem_SSZone5:	binclude	"artnlz/Special ZONE5.nlz" ; ZONE5 block
+Nem_SSZone5:	binclude	"artkospm/Special ZONE5.kospm" ; ZONE5 block
 		even
-Nem_SSZone6:	binclude	"artnlz/Special ZONE6.nlz" ; ZONE6 block
+Nem_SSZone6:	binclude	"artkospm/Special ZONE6.kospm" ; ZONE6 block
 		even
-Nem_SSUpDown:	binclude	"artnlz/Special UP-DOWN.nlz" ; special stage UP/DOWN block
+Nem_SSUpDown:	binclude	"artkospm/Special UP-DOWN.kospm" ; special stage UP/DOWN block
 		even
-Nem_SSEmerald:	binclude	"artnlz/Special Emeralds.nlz" ; special stage chaos emeralds
+Nem_SSEmerald:	binclude	"artkospm/Special Emeralds.kospm" ; special stage chaos emeralds
 		even
-Nem_SSGhost:	binclude	"artnlz/Special Ghost.nlz" ; special stage ghost block
+Nem_SSGhost:	binclude	"artkospm/Special Ghost.kospm" ; special stage ghost block
 		even
-Nem_SSWBlock:	binclude	"artnlz/Special W.nlz"	; special stage W block
+Nem_SSWBlock:	binclude	"artkospm/Special W.kospm"	; special stage W block
 		even
-Nem_SSGlass:	binclude	"artnlz/Special Glass.nlz" ; special stage destroyable glass block
+Nem_SSGlass:	binclude	"artkospm/Special Glass.kospm" ; special stage destroyable glass block
 		even
-Nem_ResultEm:	binclude	"artnlz/Special Result Emeralds.nlz" ; chaos emeralds on special stage results screen
+Nem_ResultEm:	binclude	"artkospm/Special Result Emeralds.kospm" ; chaos emeralds on special stage results screen
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - GHZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Stalk:	binclude	"artnlz/GHZ Flower Stalk.nlz"
+Nem_Stalk:	binclude	"artkospm/GHZ Flower Stalk.kospm"
 		even
-Nem_Swing:	binclude	"artnlz/GHZ Swinging Platform.nlz"
+Nem_Swing:	binclude	"artkospm/GHZ Swinging Platform.kospm"
 		even
-Nem_Bridge:	binclude	"artnlz/GHZ Bridge.nlz"
+Nem_Bridge:	binclude	"artkospm/GHZ Bridge.kospm"
 		even
-Nem_GhzUnkBlock:binclude	"artnlz/Unused - GHZ Block.nlz"
+Nem_GhzUnkBlock:binclude	"artkospm/Unused - GHZ Block.kospm"
 		even
-Nem_Ball:	binclude	"artnlz/GHZ Giant Ball.nlz"
+Nem_Ball:	binclude	"artkospm/GHZ Giant Ball.kospm"
 		even
-Nem_Spikes:	binclude	"artnlz/Spikes.nlz"
+Nem_Spikes:	binclude	"artkospm/Spikes.kospm"
 		even
-Nem_GhzLog:	binclude	"artnlz/Unused - GHZ Log.nlz"
+Nem_GhzLog:	binclude	"artkospm/Unused - GHZ Log.kospm"
 		even
-Nem_SpikePole:	binclude	"artnlz/GHZ Spiked Log.nlz"
+Nem_SpikePole:	binclude	"artkospm/GHZ Spiked Log.kospm"
 		even
-Nem_PplRock:	binclude	"artnlz/GHZ Purple Rock.nlz"
+Nem_PplRock:	binclude	"artkospm/GHZ Purple Rock.kospm"
 		even
-Nem_GhzWall1:	binclude	"artnlz/GHZ Breakable Wall.nlz"
+Nem_GhzWall1:	binclude	"artkospm/GHZ Breakable Wall.kospm"
 		even
-Nem_GhzWall2:	binclude	"artnlz/GHZ Edge Wall.nlz"
+Nem_GhzWall2:	binclude	"artkospm/GHZ Edge Wall.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - LZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Water:	binclude	"artnlz/LZ Water Surface.nlz"
+Nem_Water:	binclude	"artkospm/LZ Water Surface.kospm"
 		even
-Nem_Splash:	binclude	"artnlz/LZ Water & Splashes.nlz"
+Nem_Splash:	binclude	"artkospm/LZ Water & Splashes.kospm"
 		even
-Nem_LzSpikeBall:binclude	"artnlz/LZ Spiked Ball & Chain.nlz"
+Nem_LzSpikeBall:binclude	"artkospm/LZ Spiked Ball & Chain.kospm"
 		even
-Nem_FlapDoor:	binclude	"artnlz/LZ Flapping Door.nlz"
+Nem_FlapDoor:	binclude	"artkospm/LZ Flapping Door.kospm"
 		even
-Nem_Bubbles:	binclude	"artnlz/LZ Bubbles & Countdown.nlz"
+Nem_Bubbles:	binclude	"artkospm/LZ Bubbles & Countdown.kospm"
 		even
-Nem_LzBlock3:	binclude	"artnlz/LZ 32x16 Block.nlz"
+Nem_LzBlock3:	binclude	"artkospm/LZ 32x16 Block.kospm"
 		even
-Nem_LzDoor1:	binclude	"artnlz/LZ Vertical Door.nlz"
+Nem_LzDoor1:	binclude	"artkospm/LZ Vertical Door.kospm"
 		even
-Nem_Harpoon:	binclude	"artnlz/LZ Harpoon.nlz"
+Nem_Harpoon:	binclude	"artkospm/LZ Harpoon.kospm"
 		even
-Nem_LzPole:	binclude	"artnlz/LZ Breakable Pole.nlz"
+Nem_LzPole:	binclude	"artkospm/LZ Breakable Pole.kospm"
 		even
-Nem_LzDoor2:	binclude	"artnlz/LZ Horizontal Door.nlz"
+Nem_LzDoor2:	binclude	"artkospm/LZ Horizontal Door.kospm"
 		even
-Nem_LzWheel:	binclude	"artnlz/LZ Wheel.nlz"
+Nem_LzWheel:	binclude	"artkospm/LZ Wheel.kospm"
 		even
-Nem_Gargoyle:	binclude	"artnlz/LZ Gargoyle & Fireball.nlz"
+Nem_Gargoyle:	binclude	"artkospm/LZ Gargoyle & Fireball.kospm"
 		even
-Nem_LzBlock2:	binclude	"artnlz/LZ Blocks.nlz"
+Nem_LzBlock2:	binclude	"artkospm/LZ Blocks.kospm"
 		even
-Nem_LzPlatfm:	binclude	"artnlz/LZ Rising Platform.nlz"
+Nem_LzPlatfm:	binclude	"artkospm/LZ Rising Platform.kospm"
 		even
-Nem_Cork:	binclude	"artnlz/LZ Cork.nlz"
+Nem_Cork:	binclude	"artkospm/LZ Cork.kospm"
 		even
-Nem_LzBlock1:	binclude	"artnlz/LZ 32x32 Block.nlz"
+Nem_LzBlock1:	binclude	"artkospm/LZ 32x32 Block.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - MZ stuff
 ; ---------------------------------------------------------------------------
-Nem_MzMetal:	binclude	"artnlz/MZ Metal Blocks.nlz"
+Nem_MzMetal:	binclude	"artkospm/MZ Metal Blocks.kospm"
 		even
-Nem_MzSwitch:	binclude	"artnlz/MZ Switch.nlz"
+Nem_MzSwitch:	binclude	"artkospm/MZ Switch.kospm"
 		even
-Nem_MzGlass:	binclude	"artnlz/MZ Green Glass Block.nlz"
+Nem_MzGlass:	binclude	"artkospm/MZ Green Glass Block.kospm"
 		even
-Nem_UnkGrass:	binclude	"artnlz/Unused - Grass.nlz"
+Nem_UnkGrass:	binclude	"artkospm/Unused - Grass.kospm"
 		even
-Nem_MzFire:	binclude	"artnlz/Fireballs.nlz"
+Nem_MzFire:	binclude	"artkospm/Fireballs.kospm"
 		even
-Nem_Lava:	binclude	"artnlz/MZ Lava.nlz"
+Nem_Lava:	binclude	"artkospm/MZ Lava.kospm"
 		even
-Nem_MzBlock:	binclude	"artnlz/MZ Green Pushable Block.nlz"
+Nem_MzBlock:	binclude	"artkospm/MZ Green Pushable Block.kospm"
 		even
-Nem_MzUnkBlock:	binclude	"artnlz/Unused - MZ Background.nlz"
+Nem_MzUnkBlock:	binclude	"artkospm/Unused - MZ Background.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SLZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Seesaw:	binclude	"artnlz/SLZ Seesaw.nlz"
+Nem_Seesaw:	binclude	"artkospm/SLZ Seesaw.kospm"
 		even
-Nem_SlzSpike:	binclude	"artnlz/SLZ Little Spikeball.nlz"
+Nem_SlzSpike:	binclude	"artkospm/SLZ Little Spikeball.kospm"
 		even
-Nem_Fan:	binclude	"artnlz/SLZ Fan.nlz"
+Nem_Fan:	binclude	"artkospm/SLZ Fan.kospm"
 		even
-Nem_SlzWall:	binclude	"artnlz/SLZ Breakable Wall.nlz"
+Nem_SlzWall:	binclude	"artkospm/SLZ Breakable Wall.kospm"
 		even
-Nem_Pylon:	binclude	"artnlz/SLZ Pylon.nlz"
+Nem_Pylon:	binclude	"artkospm/SLZ Pylon.kospm"
 		even
-Nem_SlzSwing:	binclude	"artnlz/SLZ Swinging Platform.nlz"
+Nem_SlzSwing:	binclude	"artkospm/SLZ Swinging Platform.kospm"
 		even
-Nem_SlzBlock:	binclude	"artnlz/SLZ 32x32 Block.nlz"
+Nem_SlzBlock:	binclude	"artkospm/SLZ 32x32 Block.kospm"
 		even
-Nem_SlzCannon:	binclude	"artnlz/SLZ Cannon.nlz"
+Nem_SlzCannon:	binclude	"artkospm/SLZ Cannon.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SYZ stuff
 ; ---------------------------------------------------------------------------
-Nem_Bumper:	binclude	"artnlz/SYZ Bumper.nlz"
+Nem_Bumper:	binclude	"artkospm/SYZ Bumper.kospm"
 		even
-Nem_SyzSpike2:	binclude	"artnlz/SYZ Small Spikeball.nlz"
+Nem_SyzSpike2:	binclude	"artkospm/SYZ Small Spikeball.kospm"
 		even
-Nem_LzSwitch:	binclude	"artnlz/Switch.nlz"
+Nem_LzSwitch:	binclude	"artkospm/Switch.kospm"
 		even
-Nem_SyzSpike1:	binclude	"artnlz/SYZ Large Spikeball.nlz"
+Nem_SyzSpike1:	binclude	"artkospm/SYZ Large Spikeball.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - SBZ stuff
 ; ---------------------------------------------------------------------------
-Nem_SbzWheel1:	binclude	"artnlz/SBZ Running Disc.nlz"
+Nem_SbzWheel1:	binclude	"artkospm/SBZ Running Disc.kospm"
 		even
-Nem_SbzWheel2:	binclude	"artnlz/SBZ Junction Wheel.nlz"
+Nem_SbzWheel2:	binclude	"artkospm/SBZ Junction Wheel.kospm"
 		even
-Nem_Cutter:	binclude	"artnlz/SBZ Pizza Cutter.nlz"
+Nem_Cutter:	binclude	"artkospm/SBZ Pizza Cutter.kospm"
 		even
-Nem_Stomper:	binclude	"artnlz/SBZ Stomper.nlz"
+Nem_Stomper:	binclude	"artkospm/SBZ Stomper.kospm"
 		even
-Nem_SpinPform:	binclude	"artnlz/SBZ Spinning Platform.nlz"
+Nem_SpinPform:	binclude	"artkospm/SBZ Spinning Platform.kospm"
 		even
-Nem_TrapDoor:	binclude	"artnlz/SBZ Trapdoor.nlz"
+Nem_TrapDoor:	binclude	"artkospm/SBZ Trapdoor.kospm"
 		even
-Nem_SbzFloor:	binclude	"artnlz/SBZ Collapsing Floor.nlz"
+Nem_SbzFloor:	binclude	"artkospm/SBZ Collapsing Floor.kospm"
 		even
-Nem_Electric:	binclude	"artnlz/SBZ Electrocuter.nlz"
+Nem_Electric:	binclude	"artkospm/SBZ Electrocuter.kospm"
 		even
-Nem_SbzBlock:	binclude	"artnlz/SBZ Vanishing Block.nlz"
+Nem_SbzBlock:	binclude	"artkospm/SBZ Vanishing Block.kospm"
 		even
-Nem_FlamePipe:	binclude	"artnlz/SBZ Flaming Pipe.nlz"
+Nem_FlamePipe:	binclude	"artkospm/SBZ Flaming Pipe.kospm"
 		even
-Nem_SbzDoor1:	binclude	"artnlz/SBZ Small Vertical Door.nlz"
+Nem_SbzDoor1:	binclude	"artkospm/SBZ Small Vertical Door.kospm"
 		even
-Nem_SlideFloor:	binclude	"artnlz/SBZ Sliding Floor Trap.nlz"
+Nem_SlideFloor:	binclude	"artkospm/SBZ Sliding Floor Trap.kospm"
 		even
-Nem_SbzDoor2:	binclude	"artnlz/SBZ Large Horizontal Door.nlz"
+Nem_SbzDoor2:	binclude	"artkospm/SBZ Large Horizontal Door.kospm"
 		even
-Nem_Girder:	binclude	"artnlz/SBZ Crushing Girder.nlz"
+Nem_Girder:	binclude	"artkospm/SBZ Crushing Girder.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - enemies
 ; ---------------------------------------------------------------------------
-Nem_BallHog:	binclude	"artnlz/Enemy Ball Hog.nlz"
+Nem_BallHog:	binclude	"artkospm/Enemy Ball Hog.kospm"
 		even
-Nem_Crabmeat:	binclude	"artnlz/Enemy Crabmeat.nlz"
+Nem_Crabmeat:	binclude	"artkospm/Enemy Crabmeat.kospm"
 		even
-Nem_Buzz:	binclude	"artnlz/Enemy Buzz Bomber.nlz"
+Nem_Buzz:	binclude	"artkospm/Enemy Buzz Bomber.kospm"
 		even
-Nem_UnkExplode:	binclude	"artnlz/Unused - Explosion.nlz"
+Nem_UnkExplode:	binclude	"artkospm/Unused - Explosion.kospm"
 		even
-Nem_Burrobot:	binclude	"artnlz/Enemy Burrobot.nlz"
+Nem_Burrobot:	binclude	"artkospm/Enemy Burrobot.kospm"
 		even
-Nem_Chopper:	binclude	"artnlz/Enemy Chopper.nlz"
+Nem_Chopper:	binclude	"artkospm/Enemy Chopper.kospm"
 		even
-Nem_Jaws:	binclude	"artnlz/Enemy Jaws.nlz"
+Nem_Jaws:	binclude	"artkospm/Enemy Jaws.kospm"
 		even
-Nem_Roller:	binclude	"artnlz/Enemy Roller.nlz"
+Nem_Roller:	binclude	"artkospm/Enemy Roller.kospm"
 		even
-Nem_Motobug:	binclude	"artnlz/Enemy Motobug.nlz"
+Nem_Motobug:	binclude	"artkospm/Enemy Motobug.kospm"
 		even
-Nem_Newtron:	binclude	"artnlz/Enemy Newtron.nlz"
+Nem_Newtron:	binclude	"artkospm/Enemy Newtron.kospm"
 		even
-Nem_Yadrin:	binclude	"artnlz/Enemy Yadrin.nlz"
+Nem_Yadrin:	binclude	"artkospm/Enemy Yadrin.kospm"
 		even
-Nem_Basaran:	binclude	"artnlz/Enemy Basaran.nlz"
+Nem_Basaran:	binclude	"artkospm/Enemy Basaran.kospm"
 		even
-Nem_Splats:	binclude	"artnlz/Enemy Splats.nlz"
+Nem_Splats:	binclude	"artkospm/Enemy Splats.kospm"
 		even
-Nem_Bomb:	binclude	"artnlz/Enemy Bomb.nlz"
+Nem_Bomb:	binclude	"artkospm/Enemy Bomb.kospm"
 		even
-Nem_Orbinaut:	binclude	"artnlz/Enemy Orbinaut.nlz"
+Nem_Orbinaut:	binclude	"artkospm/Enemy Orbinaut.kospm"
 		even
-Nem_Cater:	binclude	"artnlz/Enemy Caterkiller.nlz"
+Nem_Cater:	binclude	"artkospm/Enemy Caterkiller.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - various
 ; ---------------------------------------------------------------------------
-Nem_TitleCard:	binclude	"artnlz/Title Cards.nlz"
+Nem_TitleCard:	binclude	"artkospm/Title Cards.kospm"
 		even
-Nem_Hud:	binclude	"artnlz/HUD.nlz"	; HUD (rings, time, score)
+Nem_Hud:	binclude	"artkospm/HUD.kospm"	; HUD (rings, time, score)
 		even
-Nem_Lives:	binclude	"artnlz/HUD - Life Counter Icon.nlz"
+Nem_Lives:	binclude	"artkospm/HUD - Life Counter Icon.kospm"
 		even
-Nem_Ring:	binclude	"artnlz/Rings.nlz"
+Nem_Ring:	binclude	"artkospm/Rings.kospm"
 		even
-Nem_Monitors:	binclude	"artnlz/Monitors.nlz"
+Nem_Monitors:	binclude	"artkospm/Monitors.kospm"
 		even
-Nem_Explode:	binclude	"artnlz/Explosion.nlz"
+Nem_Explode:	binclude	"artkospm/Explosion.kospm"
 		even
-Nem_Points:	binclude	"artnlz/Points.nlz"	; points from destroyed enemy or object
+Nem_Points:	binclude	"artkospm/Points.kospm"	; points from destroyed enemy or object
 		even
-Nem_GameOver:	binclude	"artnlz/Game Over.nlz"	; game over / time over
+Nem_GameOver:	binclude	"artkospm/Game Over.kospm"	; game over / time over
 		even
-Nem_HSpring:	binclude	"artnlz/Spring Horizontal.nlz"
+Nem_HSpring:	binclude	"artkospm/Spring Horizontal.kospm"
 		even
-Nem_VSpring:	binclude	"artnlz/Spring Vertical.nlz"
+Nem_VSpring:	binclude	"artkospm/Spring Vertical.kospm"
 		even
-Nem_SignPost:	binclude	"artnlz/Signpost.nlz"	; end of level signpost
+Nem_SignPost:	binclude	"artkospm/Signpost.kospm"	; end of level signpost
 		even
-Nem_Lamp:	binclude	"artnlz/Lamppost.nlz"
+Nem_Lamp:	binclude	"artkospm/Lamppost.kospm"
 		even
-Nem_BigFlash:	binclude	"artnlz/Giant Ring Flash.nlz"
+Nem_BigFlash:	binclude	"artkospm/Giant Ring Flash.kospm"
 		even
-Nem_Bonus:	binclude	"artnlz/Hidden Bonuses.nlz" ; hidden bonuses at end of a level
+Nem_Bonus:	binclude	"artkospm/Hidden Bonuses.kospm" ; hidden bonuses at end of a level
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - continue screen
 ; ---------------------------------------------------------------------------
-Nem_ContSonic:	binclude	"artnlz/Continue Screen Sonic.nlz"
+Nem_ContSonic:	binclude	"artkospm/Continue Screen Sonic.kospm"
 		even
-Nem_MiniSonic:	binclude	"artnlz/Continue Screen Stuff.nlz"
+Nem_MiniSonic:	binclude	"artkospm/Continue Screen Stuff.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - animals
 ; ---------------------------------------------------------------------------
-Nem_Rabbit:	binclude	"artnlz/Animal Rabbit.nlz"
+Nem_Rabbit:	binclude	"artkospm/Animal Rabbit.kospm"
 		even
-Nem_Chicken:	binclude	"artnlz/Animal Chicken.nlz"
+Nem_Chicken:	binclude	"artkospm/Animal Chicken.kospm"
 		even
-Nem_Penguin:	binclude	"artnlz/Animal Penguin.nlz"
+Nem_Penguin:	binclude	"artkospm/Animal Penguin.kospm"
 		even
-Nem_Seal:	binclude	"artnlz/Animal Seal.nlz"
+Nem_Seal:	binclude	"artkospm/Animal Seal.kospm"
 		even
-Nem_Pig:	binclude	"artnlz/Animal Pig.nlz"
+Nem_Pig:	binclude	"artkospm/Animal Pig.kospm"
 		even
-Nem_Flicky:	binclude	"artnlz/Animal Flicky.nlz"
+Nem_Flicky:	binclude	"artkospm/Animal Flicky.kospm"
 		even
-Nem_Squirrel:	binclude	"artnlz/Animal Squirrel.nlz"
+Nem_Squirrel:	binclude	"artkospm/Animal Squirrel.kospm"
 		even
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - primary patterns and block mappings
 ; ---------------------------------------------------------------------------
 Blk16_GHZ:	binclude	"map16/GHZ.eni"
 		even
-Nem_GHZ_1st:	binclude	"artnlz/8x8 - GHZ1.nlz"	; GHZ primary patterns
+Nem_GHZ_1st:	binclude	"artkospm/8x8 - GHZ1.kospm"	; GHZ primary patterns
 		even
-Nem_GHZ_2nd:	binclude	"artnlz/8x8 - GHZ2.nlz"	; GHZ secondary patterns
+Nem_GHZ_2nd:	binclude	"artkospm/8x8 - GHZ2.kospm"	; GHZ secondary patterns
 		even
 Blk128_GHZ:	binclude	"map128/GHZ.kos"
 		even
 Blk16_LZ:	binclude	"map16/LZ.eni"
 		even
-Nem_LZ:		binclude	"artnlz/8x8 - LZ.nlz"	; LZ primary patterns
+Nem_LZ:		binclude	"artkospm/8x8 - LZ.kospm"	; LZ primary patterns
 		even
 Blk128_LZ:	binclude	"map128/LZ.kos"
 		even
 Blk16_MZ:	binclude	"map16/MZ.eni"
 		even
-Nem_MZ:		binclude	"artnlz/8x8 - MZ.nlz"	; MZ primary patterns
+Nem_MZ:		binclude	"artkospm/8x8 - MZ.kospm"	; MZ primary patterns
 		even
 Blk128_MZ:	if Revision=0
 		binclude	"map128/MZ.kos"
@@ -9008,19 +9011,19 @@ Blk128_MZ:	if Revision=0
 		even
 Blk16_SLZ:	binclude	"map16/SLZ.eni"
 		even
-Nem_SLZ:	binclude	"artnlz/8x8 - SLZ.nlz"	; SLZ primary patterns
+Nem_SLZ:	binclude	"artkospm/8x8 - SLZ.kospm"	; SLZ primary patterns
 		even
 Blk128_SLZ:	binclude	"map128/SLZ.kos"
 		even
 Blk16_SYZ:	binclude	"map16/SYZ.eni"
 		even
-Nem_SYZ:	binclude	"artnlz/8x8 - SYZ.nlz"	; SYZ primary patterns
+Nem_SYZ:	binclude	"artkospm/8x8 - SYZ.kospm"	; SYZ primary patterns
 		even
 Blk128_SYZ:	binclude	"map128/SYZ.kos"
 		even
 Blk16_SBZ:	binclude	"map16/SBZ.eni"
 		even
-Nem_SBZ:	binclude	"artnlz/8x8 - SBZ.nlz"	; SBZ primary patterns
+Nem_SBZ:	binclude	"artkospm/8x8 - SBZ.kospm"	; SBZ primary patterns
 		even
 Blk128_SBZ:	if Revision=0
 		binclude	"map128/SBZ.kos"
@@ -9031,37 +9034,37 @@ Blk128_SBZ:	if Revision=0
 ; ---------------------------------------------------------------------------
 ; Compressed graphics - bosses and ending sequence
 ; ---------------------------------------------------------------------------
-Nem_Eggman:	binclude	"artnlz/Boss - Main.nlz"
+Nem_Eggman:	binclude	"artkospm/Boss - Main.kospm"
 		even
-Nem_Weapons:	binclude	"artnlz/Boss - Weapons.nlz"
+Nem_Weapons:	binclude	"artkospm/Boss - Weapons.kospm"
 		even
-Nem_Prison:	binclude	"artnlz/Prison Capsule.nlz"
+Nem_Prison:	binclude	"artkospm/Prison Capsule.kospm"
 		even
-Nem_Sbz2Eggman:	binclude	"artnlz/Boss - Eggman in SBZ2 & FZ.nlz"
+Nem_Sbz2Eggman:	binclude	"artkospm/Boss - Eggman in SBZ2 & FZ.kospm"
 		even
-Nem_FzBoss:	binclude	"artnlz/Boss - Final Zone.nlz"
+Nem_FzBoss:	binclude	"artkospm/Boss - Final Zone.kospm"
 		even
-Nem_FzEggman:	binclude	"artnlz/Boss - Eggman after FZ Fight.nlz"
+Nem_FzEggman:	binclude	"artkospm/Boss - Eggman after FZ Fight.kospm"
 		even
-Nem_Exhaust:	binclude	"artnlz/Boss - Exhaust Flame.nlz"
+Nem_Exhaust:	binclude	"artkospm/Boss - Exhaust Flame.kospm"
 		even
-Nem_EndEm:	binclude	"artnlz/Ending - Emeralds.nlz"
+Nem_EndEm:	binclude	"artkospm/Ending - Emeralds.kospm"
 		even
-Nem_EndSonic:	binclude	"artnlz/Ending - Sonic.nlz"
+Nem_EndSonic:	binclude	"artkospm/Ending - Sonic.kospm"
 		even
-Nem_TryAgain:	binclude	"artnlz/Ending - Try Again.nlz"
+Nem_TryAgain:	binclude	"artkospm/Ending - Try Again.kospm"
 		even
 Nem_EndEggman:	if Revision=0
-		binclude	"artnlz/Unused - Eggman Ending.nlz"
+		binclude	"artkospm/Unused - Eggman Ending.kospm"
 		endif
 		even
 Kos_EndFlowers:	binclude	"artkos/Flowers at Ending.kos" ; ending sequence animated flowers
 		even
-Nem_EndFlower:	binclude	"artnlz/Ending - Flowers.nlz"
+Nem_EndFlower:	binclude	"artkospm/Ending - Flowers.kospm"
 		even
-Nem_CreditText:	binclude	"artnlz/Ending - Credits.nlz"
+Nem_CreditText:	binclude	"artkospm/Ending - Credits.kospm"
 		even
-Nem_EndStH:	binclude	"artnlz/Ending - StH Logo.nlz"
+Nem_EndStH:	binclude	"artkospm/Ending - StH Logo.kospm"
 		even
 
 		if Revision=0

@@ -298,3 +298,8 @@ SonicDplcVer = 1
 
 pcmLoopCounter function sampleRate,baseCycles, 1+(53693175/15/(sampleRate)-(baseCycles)+(13/2))/13
 dpcmLoopCounter function sampleRate, pcmLoopCounter(sampleRate,301/2) ; 301 is the number of cycles zPlayPCMLoop takes.
+
+
+; calculates initial loop counter value for a dbf loop
+; that writes n bytes total at x bytes per iteration
+bytesToXcnt function n,x,n/x-1

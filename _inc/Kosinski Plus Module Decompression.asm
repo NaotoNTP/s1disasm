@@ -8,6 +8,16 @@
 ; See https://github.com/flamewing/mdcomp
 ; ---------------------------------------------------------------------------
 
+_KosPlus_LoopUnroll := 3
+
+_KosPlus_ReadBit macro
+	dbf	d2,.skip
+	moveq	#7,d2						; We have 8 new bits, but will use one up below.
+	move.b	(a0)+,d0						; Get desc field low-byte.
+.skip:
+	add.b	d0,d0						; Get a bit from the bitstream.
+    endm
+; ---------------------------------------------------------------------------
 ; =============== S U B R O U T I N E =======================================
 
 Queue_KosPlus:
@@ -80,10 +90,10 @@ Process_KosPlus_Module_Queue:
 		move.w	d0,(KosPlus_module_destination).w								; set new destination
 		move.l	(KosPlus_module_queue).w,d0
 		move.l	(KosPlus_decomp_queue).w,(KosPlus_module_queue).w			; set new source
-		move.l	#dmaSource(KosPlus_decomp_buffer),d1
-		disableIntsSave
+		move.l	#KosPlus_decomp_buffer,d1
+	;	disableIntsSave
 		bsr.w	Add_To_DMA_Queue
-		enableIntsSave
+	;	enableIntsSave
 		tst.w	(KosPlus_modules_left).w
 		bne.s	.Done														; return if this wasn't the last module
 		lea	(KosPlus_module_queue).w,a0
@@ -224,7 +234,7 @@ Process_KosPlus_Queue:
 		ori.w	#$8000,(KosPlus_decomp_queue_count).w						; set sign bit to signify decompression in progress
 		movea.l	(KosPlus_decomp_queue).w,a0
 		movea.l	(KosPlus_decomp_destination).w,a1
-		include "Data/Decompression/Kosinski Plus Internal.asm"
+		include "_inc/Kosinski Plus Internal.asm"
 		move.l	a0,(KosPlus_decomp_queue).w
 		move.l	a1,(KosPlus_decomp_destination).w
 		andi.w	#$7FFF,(KosPlus_decomp_queue_count).w						; clear decompression in progress bit
