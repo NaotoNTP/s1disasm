@@ -77,23 +77,23 @@ NLZ_AddArtToQueue:
 ;		move.l	sp,(nlzVIntSP).w			; Update the interrupt SP address used by the bookmark logic.
 ;		...
 ; -----------------------------------------------------------------------------------------------------------------------------
-NLZ_FlushAndBookmark:
+NLZ_SetBookmark:
+		tst.b	(nlzFlushModule).w			; Is a module ready to be flushed to VRAM?
+		beq.s	.attemptBookmark			; If not, proceed with the bookmark logic.
+		bra.s	NLZ_FlushBuffer				; Otherwise, flush the module from the buffer instead.
+
+; -----------------------------------------------------------------------------------------------------------------------------
+.attemptBookmark:
 		tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
-		beq.s	.testForFlush				; If not, branch and return.
+		beq.s	.exit					; If not, branch and return.
 
 		movea.l	(nlzVIntSP).w,a0			; Load the address of the V-Int stack frame.
 		addq.w	#2,a0					; Point to the position of the return address.
+		
 		move.l	(a0),(nlzBookmarkPC).w			; Save the return address as the bookmark progam counter value.
 		move.l	#.setBookmark,(a0)			; Hijack the return address with the 2nd part of this routine.
-		rts						; Return.
 
-; -----------------------------------------------------------------------------------------------------------------------------
-.testForFlush:		
-		tst.b	(nlzFlushModule).w			; Is a module ready to be flushed to VRAM?
-		beq.s	.exit					; If not, exit.
-		bra.s	NLZ_FlushBuffer				; Otherwise, flush the module from the buffer first.
-
-.exit:		
+.exit:
 		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ NLZ_FlushAndBookmark:
 		rts						; Return, effectively pausing decompression for now.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
-; Forcefully flush the NLZ module buffer to VRAM.
+; Perform a flush of the NLZ module buffer to VRAM.
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; USED:
 ;	d0-d3/a0
@@ -251,12 +251,7 @@ NLZ_DecompressFromQueue:
 		movea.l	(nlzBufferPtr).w,a1			; Load the address of the decompression buffer into a1.
 
 		st.b	(nlzBookmarkFlag).w			; Set the bookmark flag.
-		bsr.w	NLZ_DecompressModule			; Decompress the next module.
-		sf.b	(nlzBookmarkFlag).w			; Clear the bookmark flag.
-
-		move.l	a0,(nlzNextModule).w			; Save the address where we left off as the beginning of the next module.
-		st.b	(nlzFlushModule).w			; Set the flush module flag.
-		rts						; Return.
+		bra.s	NLZ_DecompressModule			; Decompress the next module (returns from this routine; cannot be a subroutine call due to bookmarking logic).
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Decompress an NLZ archive directly to a specified destination.
@@ -354,7 +349,17 @@ NLZ_DecompressModule:
 .readExtCopyLen:
 		move.b	(a0)+,d2				; Load the extended copy length byte.
 		bne.s	.gotCopyLen				; If the copy length is non-zero, branch and perform the match copy.
-		rts						; Otherwise, this is the terminating packet and we are finished with decompression. Return to the caller.
+
+	; Otherwise, this is the terminating packet and we are finished with decompression.	
+		tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
+		beq.s	.exit					; If not, skip over logic related to decompressing from the queue.
+
+		move.l	a0,(nlzNextModule).w			; Save the address where we left off as the beginning of the next module.
+		sf.b	(nlzBookmarkFlag).w			; Clear the bookmark flag.
+		st.b	(nlzFlushModule).w			; Set the flush module flag.
+
+.exit:		
+		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .fullMatch:
@@ -390,7 +395,7 @@ NLZ_DecompressModule:
 .copyBytes:
 		move.b	(a2)+,(a1)+				; Copy the remaining bytes in a loop.
 		dbf	d3,.copyBytes				; ^
-		bra.s	.rollDescField				; Branch back and handle the next packet.
+		bra.w	.rollDescField				; Branch back and handle the next packet.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Table containing information related to module configurations

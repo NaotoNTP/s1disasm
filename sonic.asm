@@ -706,7 +706,7 @@ VBla_08:
 
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		jsr	NLZ_FlushAndBookmark(pc)
+		jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
 		startZ80
@@ -750,7 +750,7 @@ VBla_0A:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_FlushAndBookmark(pc)
+		jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 		startZ80
 		bsr.w	PalCycle_SS
@@ -782,7 +782,7 @@ VBla_0C:
 		move.w	(v_hbla_hreg).w,(a5)
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		jsr	NLZ_FlushAndBookmark(pc)
+		jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
 ;.nochg:
@@ -819,7 +819,7 @@ VBla_16:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_FlushAndBookmark(pc)
+		jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 		startZ80
 
@@ -850,7 +850,7 @@ sub_106E:
 .waterbelow:
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_FlushAndBookmark(pc)
+		jsr	NLZ_SetBookmark(pc)
 		startZ80
 		rts	
 ; End of function sub_106E
