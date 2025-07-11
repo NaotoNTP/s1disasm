@@ -2952,8 +2952,8 @@ Level_PlayBgm:
 		move.b	#id_TitleCard,(v_titlecard).w ; load title card object
 
 Level_TtlCardLoop:
-		jsr	NLZ_DecompressFromQueue.w
 		move.b	#$C,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
