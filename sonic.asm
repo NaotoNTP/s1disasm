@@ -353,7 +353,7 @@ GameInit:
 
 		bsr.w	VDPSetupGame
 		bsr.w	InitDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		jsr	Clear_KosPlus_Module_Queue.w
 		bsr.w	DACDriverLoad
 		bsr.w	JoypadInit
 		move.b	#id_Sega,(v_gamemode).w ; set Game Mode to Sega Screen
@@ -663,8 +663,8 @@ VBla_14:
 		subq.w	#1,(v_demolength).w
 
 .end:
-	;	bra.w	NLZ_SetBookmark
-		rts
+		bra.w	Set_KosPlus_Bookmark
+	;	rts
 ; ===========================================================================
 
 VBla_04:
@@ -706,7 +706,7 @@ VBla_08:
 
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		jsr	NLZ_SetBookmark(pc)
+	;	jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
 		startZ80
@@ -717,7 +717,7 @@ VBla_08:
 		cmpi.b	#96,(v_hbla_line).w
 		bhs.s	Demo_Time
 		move.b	#1,(f_doupdatesinhblank).w
-	;	bsr.w	NLZ_SetBookmark
+		bsr.w	Set_KosPlus_Bookmark
 		addq.l	#4,sp
 		bra.w	VBla_Exit
 
@@ -750,7 +750,7 @@ VBla_0A:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_SetBookmark(pc)
+	;	jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 		startZ80
 		bsr.w	PalCycle_SS
@@ -761,8 +761,8 @@ VBla_0A:
 		subq.w	#1,(v_demolength).w	; subtract 1 from time left in demo
 
 .end:
-	;	bra.w	NLZ_SetBookmark
-		rts
+		bra.w	Set_KosPlus_Bookmark
+	;	rts
 ; ===========================================================================
 
 VBla_0C:
@@ -782,7 +782,7 @@ VBla_0C:
 		move.w	(v_hbla_hreg).w,(a5)
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		jsr	NLZ_SetBookmark(pc)
+	;	jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
 ;.nochg:
@@ -795,8 +795,8 @@ VBla_0C:
 		jsr	(AnimateLevelGfx).l
 		jsr	(HUD_Update).l
 	;	bsr.w	sub_1642
-	;	bra.w	NLZ_SetBookmark
-		rts
+		bra.w	Set_KosPlus_Bookmark
+	;	rts
 ; ===========================================================================
 
 VBla_0E:
@@ -819,7 +819,7 @@ VBla_16:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_SetBookmark(pc)
+	;	jsr	NLZ_SetBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 		startZ80
 
@@ -829,8 +829,8 @@ VBla_16:
 		subq.w	#1,(v_demolength).w
 
 .end:
-	;	bra.w	NLZ_SetBookmark
-		rts
+		bra.w	Set_KosPlus_Bookmark
+	;	rts
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -850,7 +850,7 @@ sub_106E:
 .waterbelow:
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_SetBookmark(pc)
+	;	jsr	NLZ_SetBookmark(pc)
 		startZ80
 		rts	
 ; End of function sub_106E
@@ -1114,7 +1114,8 @@ Tilemap_Cell:
 ; End of function TilemapToVRAM
 
 		include	"_inc/Nemesis Decompression.asm"
-		include	"_inc/NLZ Decompression Library.asm"
+	;	include	"_inc/NLZ Decompression Library.asm"
+		include	"_inc/Kosinski Plus Module Decompression.asm"
 		include	"_inc/DMA-Queue.asm"
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -1131,9 +1132,7 @@ Tilemap_Cell:
 
 ; LoadPLC2:
 NewPLC:
-		movem.l	d0/a0-a1,-(sp)
-		jsr	NLZ_InitializeQueue(pc)
-		movem.l	(sp)+,d0/a0-a1
+		jsr	Clear_KosPlus_Module_Queue(pc)
 		
 ;		movem.l	a1-a2,-(sp)
 ;		lea	(ArtLoadCues).l,a1
@@ -1168,24 +1167,24 @@ NewPLC:
 
 ; LoadPLC:
 AddPLC:
-		movem.l	d1/a1-a2,-(sp)
-		lea	(ArtLoadCues).l,a2
+		movem.l	d2-d3/a0-a2,-(sp)
+		lea	(ArtLoadCues).l,a0
 		add.w	d0,d0
-		move.w	(a2,d0.w),d0
-		lea	(a2,d0.w),a2		; jump to relevant PLC
+		move.w	(a0,d0.w),d0
+		lea	(a0,d0.w),a2		; jump to relevant PLC
 
 .copytoRAM:
-		move.w	(a2)+,d0	; get length of PLC
+		move.w	(a0)+,d0	; get length of PLC
 		bmi.s	.skip
 
 .loop:
-		move.l	(a2)+,a1
-		move.w	(a2)+,d1
-		jsr	NLZ_AddArtToQueue(pc)
+		move.l	(a0)+,a1
+		move.w	(a0)+,d2
+		jsr	Queue_KosPlus_Module(pc)
 		dbf	d0,.loop	; repeat for length of PLC
 
 .skip:
-		movem.l	(sp)+,d1/a1-a2 ; a1=object
+		movem.l	(sp)+,d2-d3/a0-a2 ; a1=object
 		rts	
 
 ;		movem.l	a1-a2,-(sp)
@@ -1376,13 +1375,13 @@ loc_16E2:
 QuickPLC:
 		bsr.w	NewPLC
 
-.loop:
-		jsr	NLZ_DecompressFromQueue(pc)
-		jsr	NLZ_FlushBuffer(pc)
-		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-		bne.s	.loop
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;.loop:
+;		jsr	NLZ_DecompressFromQueue(pc)
+;		jsr	NLZ_FlushBuffer(pc)
+;		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
+;		bne.s	.loop
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 		rts
 
 ;		lea	(ArtLoadCues).l,a1 ; load the PLC index
@@ -2076,12 +2075,12 @@ GM_Sega:
 		move.w	d0,(vdp_control_port).l
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		
 
-		moveq	#0,d1
-		lea	(Nem_SegaLogo).l,a1 ; load Sega	logo patterns
-		jsr	NLZ_AddArtToQueue.w
-
+;		moveq	#0,d1
+;		lea	(Nem_SegaLogo).l,a1 ; load Sega	logo patterns
+;		jsr	NLZ_AddArtToQueue.w
+;
 ;.loop:
 ;		jsr	NLZ_DecompressFromQueue.w
 ;		jsr	NLZ_FlushBuffer.w
@@ -2161,19 +2160,19 @@ GM_Title:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		
 
 		clearRAM v_objspace,v_objend
 
-		moveq	#0,d1
-		lea	(Nem_JapNames).l,a1 ; load Japanese credits
-		jsr	NLZ_AddArtToQueue.w
-		
-		move.w	#ArtTile_Sonic_Team_Font*$20,d1
-		lea	(Nem_CreditText).l,a1 ;	load alphabet
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
+;		moveq	#0,d1
+;		lea	(Nem_JapNames).l,a1 ; load Japanese credits
+;		jsr	NLZ_AddArtToQueue.w
+;		
+;		move.w	#ArtTile_Sonic_Team_Font*$20,d1
+;		lea	(Nem_CreditText).l,a1 ;	load alphabet
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;	
 ;.loop:
 ;		jsr	NLZ_DecompressFromQueue.w
 ;		jsr	NLZ_FlushBuffer.w
@@ -2199,21 +2198,21 @@ GM_Title:
 		bsr.w	PaletteFadeIn
 		disable_ints
 
-		move.w	#ArtTile_Title_Foreground*$20,d1
-		lea	(Nem_TitleFg).l,a1 ; load title	screen patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-
-		move.w	#ArtTile_Title_Sonic*$20,d1
-		lea	(Nem_TitleSonic).l,a1 ;	load Sonic title screen	patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-
-		move.w	#ArtTile_Title_Trademark*$20,d1
-		lea	(Nem_TitleTM).l,a1 ; load "TM" patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
+;		move.w	#ArtTile_Title_Foreground*$20,d1
+;		lea	(Nem_TitleFg).l,a1 ; load title	screen patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;
+;		move.w	#ArtTile_Title_Sonic*$20,d1
+;		lea	(Nem_TitleSonic).l,a1 ;	load Sonic title screen	patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;
+;		move.w	#ArtTile_Title_Trademark*$20,d1
+;		lea	(Nem_TitleTM).l,a1 ; load "TM" patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;	
 ;.loop2:
 ;		jsr	NLZ_DecompressFromQueue.w
 ;		jsr	NLZ_FlushBuffer.w
@@ -2263,11 +2262,11 @@ Tit_LoadText:
 
 		copyTilemap	v_128x128&$FFFFFF,$C206,$21,$15
 
-		move.w	#ArtTile_Level*$20,d1
-		lea	(Nem_GHZ_1st).l,a1 ; load GHZ patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
+;		move.w	#ArtTile_Level*$20,d1
+;		lea	(Nem_GHZ_1st).l,a1 ; load GHZ patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;	
 ;.loop:
 ;		jsr	NLZ_DecompressFromQueue.w
 ;		jsr	NLZ_FlushBuffer.w
@@ -2318,8 +2317,9 @@ Tit_LoadText:
 
 Tit_MainLoop:
 		move.b	#4,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		jsr	(ExecuteObjects).l
 		bsr.w	DeformLayers
 		jsr	(BuildSprites).l
@@ -2580,8 +2580,9 @@ GotoDemo:
 
 loc_33B6:
 		move.b	#4,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		bsr.w	DeformLayers
 		bsr.w	PaletteCycle
 	;	bsr.w	RunPLC
@@ -2846,13 +2847,13 @@ Level_NoMusicFade:
 		disable_ints
 
 	;	ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 		
-		move.w	#ArtTile_Title_Card*$20,d1
+		
+		move.w	#ArtTile_Title_Card*$20,d2
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
-		jsr	NLZ_AddArtToQueue.w
+		jsr	Queue_KosPlus_Module.w
 	;	bsr.w	NemDec
-	
+
 ;.loop:
 ;		jsr	NLZ_DecompressFromQueue.w
 ;		jsr	NLZ_FlushBuffer.w
@@ -2894,7 +2895,7 @@ Level_ClrRam:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
-	;	jsr	NLZ_InitializeQueue.w
+	;	
 
 		cmpi.b	#id_LZ,(v_zone).w ; is level LZ?
 		bne.s	Level_LoadPal	; if not, branch
@@ -2952,9 +2953,10 @@ Level_PlayBgm:
 		move.b	#id_TitleCard,(v_titlecard).w ; load title card object
 
 Level_TtlCardLoop:
-		jsr	NLZ_DecompressFromQueue.w
 		move.b	#$C,(v_vbla_routine).w
+		jsr	Process_KosPlus_Queue.w
 		bsr.w	WaitForVBla
+		jsr	Process_KosPlus_Module_Queue.w
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
 	;	bsr.w	RunPLC
@@ -3448,7 +3450,7 @@ loc_47D4:
 		
 		jsr	(Hud_Base).l
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		
 		
 		move	#ArtTile_Title_Card*$20,d1
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
@@ -3802,32 +3804,32 @@ GM_Continue:
 		move.w	#$8700,(a6)	; background colour
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		
 
 		clearRAM v_objspace,v_objend
 
-		move.w	#ArtTile_Title_Card*$20,d1
-		lea	(Nem_TitleCard).l,a1 ; load title card patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-
-		move.w	#ArtTile_Continue_Sonic*$20,d1
-		lea	(Nem_ContSonic).l,a1 ; load Sonic patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-		
-		move.w	#ArtTile_Mini_Sonic*$20,d1
-		lea	(Nem_MiniSonic).l,a1 ; load continue screen patterns
-		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	NLZ_FlushBuffer.w
-		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-		bne.s	.loop
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;		move.w	#ArtTile_Title_Card*$20,d1
+;		lea	(Nem_TitleCard).l,a1 ; load title card patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;
+;		move.w	#ArtTile_Continue_Sonic*$20,d1
+;		lea	(Nem_ContSonic).l,a1 ; load Sonic patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;		
+;		move.w	#ArtTile_Mini_Sonic*$20,d1
+;		lea	(Nem_MiniSonic).l,a1 ; load continue screen patterns
+;		jsr	NLZ_AddArtToQueue.w
+;	;	bsr.w	NemDec
+;	
+;.loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
+;		bne.s	.loop
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 
 		moveq	#10,d1
 		jsr	(ContScrCounter).l	; run countdown	(start from 10)
@@ -3930,7 +3932,7 @@ GM_Ending:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		jsr	Clear_KosPlus_Module_Queue.w
 
 		move.w	#30,(v_air).w
 		move.w	#id_EndZ<<8,(v_zone).w ; set level number to 0600 (extra flowers)
@@ -4149,7 +4151,7 @@ GM_Credits:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		jsr	Clear_KosPlus_Module_Queue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -4278,7 +4280,7 @@ TryAgainEnd:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
+		jsr	Clear_KosPlus_Module_Queue.w
 
 		clearRAM v_objspace,v_objend
 
