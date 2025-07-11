@@ -663,7 +663,8 @@ VBla_14:
 		subq.w	#1,(v_demolength).w
 
 .end:
-		bra.w	NLZ_SetBookmark
+	;	bra.w	NLZ_SetBookmark
+		rts
 ; ===========================================================================
 
 VBla_04:
@@ -705,9 +706,9 @@ VBla_08:
 
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
-.nochg:
 		startZ80
 		movem.l	(v_screenposx).w,d0-d7
 		movem.l	d0-d7,(v_screenposx_dup).w
@@ -716,7 +717,7 @@ VBla_08:
 		cmpi.b	#96,(v_hbla_line).w
 		bhs.s	Demo_Time
 		move.b	#1,(f_doupdatesinhblank).w
-		bsr.w	NLZ_SetBookmark
+	;	bsr.w	NLZ_SetBookmark
 		addq.l	#4,sp
 		bra.w	VBla_Exit
 
@@ -749,17 +750,19 @@ VBla_0A:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
+		jsr	NLZ_FlushAndBookmark(pc)
+		jsr	ProcessDMAQueue(pc)
 		startZ80
 		bsr.w	PalCycle_SS
-		jsr	ProcessDMAQueue(pc)
 
-.nochg:
+;.nochg:
 		tst.w	(v_demolength).w	; is there time left on the demo?
 		beq.w	.end	; if not, return
 		subq.w	#1,(v_demolength).w	; subtract 1 from time left in demo
 
 .end:
-		bra.w	NLZ_SetBookmark	
+	;	bra.w	NLZ_SetBookmark
+		rts
 ; ===========================================================================
 
 VBla_0C:
@@ -779,9 +782,10 @@ VBla_0C:
 		move.w	(v_hbla_hreg).w,(a5)
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
-.nochg:
+;.nochg:
 		startZ80
 		movem.l	(v_screenposx).w,d0-d7
 		movem.l	d0-d7,(v_screenposx_dup).w
@@ -791,7 +795,8 @@ VBla_0C:
 		jsr	(AnimateLevelGfx).l
 		jsr	(HUD_Update).l
 	;	bsr.w	sub_1642
-		bra.w	NLZ_SetBookmark
+	;	bra.w	NLZ_SetBookmark
+		rts
 ; ===========================================================================
 
 VBla_0E:
@@ -814,16 +819,18 @@ VBla_16:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		startZ80
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
+		startZ80
 
-.nochg:
+;.nochg:
 		tst.w	(v_demolength).w
 		beq.w	.end
 		subq.w	#1,(v_demolength).w
 
 .end:
-		bra.w	NLZ_SetBookmark
+	;	bra.w	NLZ_SetBookmark
+		rts
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
@@ -843,6 +850,7 @@ sub_106E:
 .waterbelow:
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
+		jsr	NLZ_FlushAndBookmark(pc)
 		startZ80
 		rts	
 ; End of function sub_106E
@@ -1370,7 +1378,7 @@ QuickPLC:
 
 .loop:
 		jsr	NLZ_DecompressFromQueue(pc)
-		jsr	ProcessDMAQueue(pc)
+		jsr	NLZ_FlushBuffer(pc)
 		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
 		bne.s	.loop
 		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
@@ -2074,12 +2082,12 @@ GM_Sega:
 		lea	(Nem_SegaLogo).l,a1 ; load Sega	logo patterns
 		jsr	NLZ_AddArtToQueue.w
 
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
-	;	bsr.w	NemDec
+;.loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
+;	;	bsr.w	NemDec
 
 		lea	(v_128x128&$FFFFFF).l,a1
 		lea	(Eni_SegaLogo).l,a0 ; load Sega	logo mappings
@@ -2166,13 +2174,13 @@ GM_Title:
 		jsr	NLZ_AddArtToQueue.w
 	;	bsr.w	NemDec
 	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
-		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-		bne.s	.loop
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;.loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
+;		bne.s	.loop
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 	
 		lea	(v_128x128&$FFFFFF).l,a1
 		lea	(Eni_JapNames).l,a0 ; load mappings for	Japanese credits
@@ -2206,13 +2214,13 @@ GM_Title:
 		jsr	NLZ_AddArtToQueue.w
 	;	bsr.w	NemDec
 	
-.loop2:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
-		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-		bne.s	.loop2
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop2
+;.loop2:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
+;		bne.s	.loop2
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop2
 
 		lea	(vdp_data_port).l,a6
 		locVRAM	ArtTile_Level_Select_Font*$20,4(a6)
@@ -2260,11 +2268,11 @@ Tit_LoadText:
 		jsr	NLZ_AddArtToQueue.w
 	;	bsr.w	NemDec
 	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;.loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 
 		moveq	#palid_Title,d0	; load title screen palette
 		bsr.w	PalLoad1
@@ -2845,11 +2853,11 @@ Level_NoMusicFade:
 		jsr	NLZ_AddArtToQueue.w
 	;	bsr.w	NemDec
 	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+;.loop:
+;		jsr	NLZ_DecompressFromQueue.w
+;		jsr	NLZ_FlushBuffer.w
+;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
+;		bne.s	.loop
 	
 		enable_ints
 		moveq	#0,d0
@@ -3449,7 +3457,7 @@ loc_47D4:
 	
 .loop:
 		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
+		jsr	NLZ_FlushBuffer.w
 		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
 		bne.s	.loop
 
@@ -3815,7 +3823,7 @@ GM_Continue:
 	
 .loop:
 		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
+		jsr	NLZ_FlushBuffer.w
 		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
 		bne.s	.loop
 		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
@@ -4152,7 +4160,7 @@ GM_Credits:
 	
 .loop:
 		jsr	NLZ_DecompressFromQueue.w
-		jsr	ProcessDMAQueue.w
+		jsr	NLZ_FlushBuffer.w
 		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
 		bne.s	.loop
 

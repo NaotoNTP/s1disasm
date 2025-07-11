@@ -39,8 +39,9 @@ nlzQueueFree:		ds.w	1		; Word-size pointer to the first free entry in the queue.
 nlzLastModSize		ds.w	1		; Size of the last module in the current archive, in words. (Can also be used as a flag to indicate when the last module in an archive has been decompressed, as it gets cleared upon completion).
 
 nlzBookmarkFlag:	ds.b	1		; Flag used to indicate if a bookmark should be set upon returning from VBlank.
+nlzFlushModule:		ds.b	1		; Flag used to indicate if the module buffer is ready to be flushed.
 nlzModuleCount:		ds.b	1		; Number of modules left to decompress in the current archive.
-nlzModuleConfig:	ds.w	1		; Offset into the table that defines the configuration of the current archive.
+nlzModuleConfig:	ds.b	1		; Offset into the table that defines the configuration of the current archive.
 
 nlzVRAMDest:		ds.w	1		; VRAM destination for the current module to be transfered to.
 nlzBufferPtr:		ds.l	1		; The address of the decompression buffer to use for the current archive.

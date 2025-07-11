@@ -11,6 +11,8 @@ NLZ_InitializeQueue:
 		lea	(nlzQueue).w,a0				; Load the address of the first queue entry into register a0.
 		move.w	a0,(nlzQueueFree).w			; Initialize the pointer of the first free queue entry.
 		clr.l	(nlzQueueHead).w			; Clear both the head and tail queue entry pointers.
+		clr.l	(nlzBookmarkFlag).w			; Clear the bookmark flag, flush module flag, module count, and module config variables.
+		clr.w	(nlzLastModSize).w			; Clear the last module size variable.
 
 		move.w	#NLZ_QUEUE_SIZE-1-1,d0			; Initialize the loop counter to loop through all but the final entry.
 
@@ -20,7 +22,7 @@ NLZ_InitializeQueue:
 		move.w	a1,a0					; Move to the next entry.
 		dbf	d0,.initEntries				; Loop until all but the final queue entry have been initialized.
 
-		clr.w	nque.next(a0)				; Nullify the final entry's next entry pointer.			
+		clr.w	nque.next(a0)				; Nullify the final entry's next entry pointer.
 		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
@@ -63,7 +65,7 @@ NLZ_AddArtToQueue:
 		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
-; Sets a bookmark for the NLZ decompressor if the bookmark flag is set (called before exiting V-Int).
+; Sets a bookmark for the NLZ decompressor if the bookmark flag is set and flushes the module buffer if necessary (called during V-Int).
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; NOTE:	You MUST update the 'nlzVIntSP' variable at the very beginning of V-Int before backing up any registers; it needs to be 
 ;	pointing at the interrupt's stack frame in order for this routine to correctly hijack the return address.
@@ -75,14 +77,21 @@ NLZ_AddArtToQueue:
 ;		move.l	sp,(nlzVIntSP).w			; Update the interrupt SP address used by the bookmark logic.
 ;		...
 ; -----------------------------------------------------------------------------------------------------------------------------
-NLZ_SetBookmark:
+NLZ_FlushAndBookmark:
 		tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
-		beq.s	.exit					; If not, branch and return.
+		beq.s	.testForFlush				; If not, branch and return.
 
 		movea.l	(nlzVIntSP).w,a0			; Load the address of the V-Int stack frame.
 		addq.w	#2,a0					; Point to the position of the return address.
 		move.l	(a0),(nlzBookmarkPC).w			; Save the return address as the bookmark progam counter value.
 		move.l	#.setBookmark,(a0)			; Hijack the return address with the 2nd part of this routine.
+		rts						; Return.
+
+; -----------------------------------------------------------------------------------------------------------------------------
+.testForFlush:		
+		tst.b	(nlzFlushModule).w			; Is a module ready to be flushed to VRAM?
+		beq.s	.exit					; If not, exit.
+		bra.s	NLZ_FlushBuffer				; Otherwise, flush the module from the buffer first.
 
 .exit:		
 		rts						; Return.
@@ -95,14 +104,80 @@ NLZ_SetBookmark:
 		rts						; Return, effectively pausing decompression for now.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
+; Forcefully flush the NLZ module buffer to VRAM.
+; -----------------------------------------------------------------------------------------------------------------------------
+; USED:
+;	d0-d3/a0
+; -----------------------------------------------------------------------------------------------------------------------------
+NLZ_FlushBuffer:
+		move.l	(nlzBufferPtr).w,d2			; Load the address of the buffer into d2.
+		lsr.l	#1,d2					; Shift right by one to make it DMA-compatible.
+		move.w	(nlzVRAMDest).w,d3			; Load the VRAM destination for the current module into d3.
+
+		tst.b	(nlzModuleCount).w			; Are we getting ready to transfer the last module?
+		bne.s	.fullModule				; If not, branch to queue up the transfer of a full module to VRAM.
+	
+		move.w	(nlzLastModSize).w,d1			; Otherwise, load the size of the last module as the transfer length.
+		clr.w	(nlzLastModSize).w			; Clear the last module size to signal that the archive has been fully decompressed.
+		bra.s	.performFlush				; Branch ahead and perform the flush.
+
+; -----------------------------------------------------------------------------------------------------------------------------
+.fullModule:
+		lea	NLZ_ModuleConfig(pc),a0			; Load the address of the module configuration table.
+		clr.w	d0					; Clear register d0.
+		move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
+
+		move.w	2(a0,d0.w),d1				; Load the size of a full module as the transfer length.
+		add.w	d1,(nlzVRAMDest).w			; Add the buffer size to the VRAM destination to update it for the next module.
+		lsr.w	#1,d1					; Put the transfer length in units of words instead of bytes.
+
+.performFlush:
+		lea	($C00004).l,a0				; Load the address of the VDP Control Port into register a0.
+
+		move.w	#$9500,d0				; Set the low byte of the DMA transfer source address.
+		move.b	d2,d0					; ^
+		move.w	d0,(a0)					; ^
+
+		move.l	#$977F9600,d0				; Set the middle and high bytes of the DMA transfer source address.
+		lsr.w	#8,d2					; ^
+		move.b	d2,d0					; ^
+		move.l	d0,(a0)					; ^
+
+		move.l	#$94009300,d0				; Set the length of the DMA transfer.
+		move.b	d1,d0					; ^
+		lsr.w	#8,d1					; ^
+		swap	d0					; ^
+		move.b	d1,d0					; ^
+		move.l	d0,(a0)					; ^
+
+		moveq	#0,d0					; Set the destination for the DMA transfer.
+		move.w	d3,d0					; ^
+		rol.l	#2,d0					; ^
+		lsr.w	#2,d0					; ^
+		swap	d0					; ^
+		ori.l	#$40000080,d0				; ^
+
+;		move.w	#$100,($A11100).l			; Invoke a request to halt the Z80.
+;.z80Wait:	btst	#0,($A11100).l				; Wait for the Z80 to halt operation. 
+;		bne.s	.z80Wait				; ^
+	
+		move.l	d0,(a0)					; Initiate the DMA transfer.
+;		move.w	#0,($A11100).l				; Invoke a request to start the Z80.
+		sf.b	(nlzFlushModule).w			; Clear the flush module flag.
+		rts						; Return.
+
+; -----------------------------------------------------------------------------------------------------------------------------
 ; Process the next item in the queue or resume in-progress decompression.
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; USED:
 ;	d0-d6/a0-a3
 ; -----------------------------------------------------------------------------------------------------------------------------
 NLZ_DecompressFromQueue:
+		tst.b	(nlzFlushModule).w			; Has the previous module been flushed to VRAM?
+		bne.s	.exit					; If not, exit.
+
 		tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
-		bne.s	.resumeFromBookmark			; If so, branch and pick up where we left off with decompressing the current module.
+		bne.s	.resumeFromBookmark			; If so, branch and pick up where we left off.
 
 		subq.b	#1,(nlzModuleCount).w			; Decrement the module counter.		
 		bcc.w	.decNextModule				; If the counter did not underflow, decompress the next full module.
@@ -111,7 +186,9 @@ NLZ_DecompressFromQueue:
 		clr.b	(nlzModuleCount).w			; Clear the module counter.
 		move.w	(nlzQueueHead).w,d0			; Are there any entries in the queue?
 		bne.s	.gotNextEntry				; If so, branch.
-		rts						; Otherwise, return.
+
+.exit:		
+		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .gotNextEntry:
@@ -136,20 +213,21 @@ NLZ_DecompressFromQueue:
 		lea	(nlzLgBuffer).l,a1			; Otherwise, we load the address of a larger buffer for the non-moduled archive.
 
 .isModuled:
-		move.w	d0,(nlzModuleConfig).w			; Save the the module configuration index.
-		move.l	a0,(nlzNextModule).w			; Save the address of the beginning of the datastream as the current source address.
+		move.b	d0,(nlzModuleConfig).w			; Save the the module configuration index.
+	;	move.l	a0,(nlzNextModule).w			; Save the address of the beginning of the datastream as the current source address.
 		move.l	a1,(nlzBufferPtr).w			; Save the address of the decompression buffer we want to use.
 		bra.s	.decModule				; Branch ahead and decompress the first module.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .resumeFromBookmark:
 		lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
-		adda.w	(nlzModuleConfig).w,a1			; Add the module configuration offset.
+		clr.w	d0					; Clear register d0.
+		move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
+		adda.w	d0,a1					; Add it to get the configuration for this archive.
+
 		move.b	(a1)+,d4				; Restore the shift count (d4).
 		move.b	(a1)+,d5				; Restore the copy mask (d5).
 		move.w	(a1)+,d6				; Restore the buffer size (d6).
-
-		add.w	(nlzModuleConfig).w,a1
 
 		movem.w	(nlzBookmarkDn).w,d0-d3			; Restore the remaining data registers (d0-d3).
 		movem.l	(nlzBookmarkAn).w,a0-a3			; Restore the address registers (a0-a3).
@@ -163,7 +241,10 @@ NLZ_DecompressFromQueue:
 		
 .decModule:
 		lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
-		adda.w	(nlzModuleConfig).w,a1			; Add the module configuration offset.
+		clr.w	d0					; Clear register d0.
+		move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
+		adda.w	d0,a1					; Add it to get the configuration for this archive.
+
 		move.b	(a1)+,d4				; Load the shift count into d4.
 		move.b	(a1)+,d5				; Load the copy mask into d5.
 		move.w	(a1)+,d6				; Load the buffer size into d6.
@@ -174,21 +255,8 @@ NLZ_DecompressFromQueue:
 		sf.b	(nlzBookmarkFlag).w			; Clear the bookmark flag.
 
 		move.l	a0,(nlzNextModule).w			; Save the address where we left off as the beginning of the next module.
-		move.l	(nlzBufferPtr).w,d1			; Load the buffer address into d1 to pass as the source of the DMA transfer.
-		move.w	(nlzVRAMDest).w,d2			; Load the VRAM destination for the current module into d2.
-
-		tst.b	(nlzModuleCount).w			; Are we getting ready to transfer the last module?
-		bne.s	.fullModule				; If not, branch to queue up the transfer of a full module to VRAM.
-		move.w	(nlzLastModSize).w,d3			; Otherwise, load the size of the last module as the transfer length.
-		clr.w	(nlzLastModSize).w			; Clear the last module size to signal that the archive has been fully decompressed.
-		bra.w	QueueDMATransfer			; Jump to the DMA Queue routine and exit.
-
-; -----------------------------------------------------------------------------------------------------------------------------
-.fullModule:
-		move.w	d6,d3					; Load the size of a full module (in words) as the transfer length.
-		lsr.w	#1,d3					; ^
-		add.w	d6,(nlzVRAMDest).w			; Add the buffer size to the VRAM destination to update it for the next module.
-		bra.w	QueueDMATransfer			; Jump to the DMA Queue routine and exit.
+		st.b	(nlzFlushModule).w			; Set the flush module flag.
+		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Decompress an NLZ archive directly to a specified destination.
