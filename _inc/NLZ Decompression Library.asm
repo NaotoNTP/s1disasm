@@ -157,12 +157,7 @@ NLZ_FlushBuffer:
 		swap	d0					; ^
 		ori.l	#$40000080,d0				; ^
 
-;		move.w	#$100,($A11100).l			; Invoke a request to halt the Z80.
-;.z80Wait:	btst	#0,($A11100).l				; Wait for the Z80 to halt operation. 
-;		bne.s	.z80Wait				; ^
-	
 		move.l	d0,(a0)					; Initiate the DMA transfer.
-;		move.w	#0,($A11100).l				; Invoke a request to start the Z80.
 		sf.b	(nlzFlushModule).w			; Clear the flush module flag.
 		rts						; Return.
 
@@ -214,7 +209,6 @@ NLZ_DecompressFromQueue:
 
 .isModuled:
 		move.b	d0,(nlzModuleConfig).w			; Save the the module configuration index.
-	;	move.l	a0,(nlzNextModule).w			; Save the address of the beginning of the datastream as the current source address.
 		move.l	a1,(nlzBufferPtr).w			; Save the address of the decompression buffer we want to use.
 		bra.s	.decModule				; Branch ahead and decompress the first module.
 
