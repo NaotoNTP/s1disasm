@@ -77,7 +77,7 @@ NLZ_AddArtToQueue:
 ;		move.l	sp,(nlzVIntSP).w			; Update the interrupt SP address used by the bookmark logic.
 ;		...
 ; -----------------------------------------------------------------------------------------------------------------------------
-NLZ_SetBookmark:
+NLZ_FlushAndBookmark:
 		tst.b	(nlzFlushModule).w			; Is a module ready to be flushed to VRAM?
 		beq.s	.attemptBookmark			; If not, proceed with the bookmark logic.
 		bra.s	NLZ_FlushBuffer				; Otherwise, flush the module from the buffer instead.

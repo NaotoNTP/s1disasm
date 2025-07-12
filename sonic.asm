@@ -663,7 +663,6 @@ VBla_14:
 		subq.w	#1,(v_demolength).w
 
 .end:
-	;	bra.w	NLZ_SetBookmark
 		rts
 ; ===========================================================================
 
@@ -706,7 +705,7 @@ VBla_08:
 
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		jsr	NLZ_SetBookmark(pc)
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
 		startZ80
@@ -717,7 +716,6 @@ VBla_08:
 		cmpi.b	#96,(v_hbla_line).w
 		bhs.s	Demo_Time
 		move.b	#1,(f_doupdatesinhblank).w
-	;	bsr.w	NLZ_SetBookmark
 		addq.l	#4,sp
 		bra.w	VBla_Exit
 
@@ -750,7 +748,7 @@ VBla_0A:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_SetBookmark(pc)
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 		startZ80
 		bsr.w	PalCycle_SS
@@ -761,7 +759,6 @@ VBla_0A:
 		subq.w	#1,(v_demolength).w	; subtract 1 from time left in demo
 
 .end:
-	;	bra.w	NLZ_SetBookmark
 		rts
 ; ===========================================================================
 
@@ -782,7 +779,7 @@ VBla_0C:
 		move.w	(v_hbla_hreg).w,(a5)
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
-		jsr	NLZ_SetBookmark(pc)
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 
 ;.nochg:
@@ -794,8 +791,6 @@ VBla_0C:
 		bsr.w	LoadTilesAsYouMove
 		jsr	(AnimateLevelGfx).l
 		jsr	(HUD_Update).l
-	;	bsr.w	sub_1642
-	;	bra.w	NLZ_SetBookmark
 		rts
 ; ===========================================================================
 
@@ -819,7 +814,7 @@ VBla_16:
 		writeCRAM	v_pal_dry,$80,0
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_SetBookmark(pc)
+		jsr	NLZ_FlushAndBookmark(pc)
 		jsr	ProcessDMAQueue(pc)
 		startZ80
 
@@ -829,7 +824,6 @@ VBla_16:
 		subq.w	#1,(v_demolength).w
 
 .end:
-	;	bra.w	NLZ_SetBookmark
 		rts
 
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
@@ -850,7 +844,7 @@ sub_106E:
 .waterbelow:
 		writeVRAM	v_spritetablebuffer,$280,vram_sprites
 		writeVRAM	v_hscrolltablebuffer,$380,vram_hscroll
-		jsr	NLZ_SetBookmark(pc)
+		jsr	NLZ_FlushAndBookmark(pc)
 		startZ80
 		rts	
 ; End of function sub_106E
@@ -1113,7 +1107,7 @@ Tilemap_Cell:
 		rts	
 ; End of function TilemapToVRAM
 
-		include	"_inc/Nemesis Decompression.asm"
+;		include	"_inc/Nemesis Decompression.asm"
 		include	"_inc/NLZ Decompression Library.asm"
 		include	"_inc/DMA-Queue.asm"
 
@@ -1187,33 +1181,6 @@ AddPLC:
 .skip:
 		movem.l	(sp)+,d1/a1-a2 ; a1=object
 		rts	
-
-;		movem.l	a1-a2,-(sp)
-;		lea	(ArtLoadCues).l,a1
-;		add.w	d0,d0
-;		move.w	(a1,d0.w),d0
-;		lea	(a1,d0.w),a1		; jump to relevant PLC
-;		lea	(v_plc_buffer).w,a2 ; PLC buffer space
-;
-;.findspace:
-;		tst.l	(a2)		; is space available in RAM?
-;		beq.s	.copytoRAM	; if yes, branch
-;		addq.w	#6,a2		; if not, try next space
-;		bra.s	.findspace
-;; ===========================================================================
-;
-;.copytoRAM:
-;		move.w	(a1)+,d0	; get length of PLC
-;		bmi.s	.skip
-;
-;.loop:
-;		move.l	(a1)+,(a2)+
-;		move.w	(a1)+,(a2)+	; copy PLC to RAM
-;		dbf	d0,.loop	; repeat for length of PLC
-;
-;.skip:
-;		movem.l	(sp)+,a1-a2 ; a1=object
-;		rts	
 ; End of function AddPLC
 
 
@@ -1281,90 +1248,90 @@ AddPLC:
 ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
 
 
-sub_1642:
-		tst.w	(v_plc_patternsleft).w
-		beq.w	locret_16DA
-		move.w	#9,(v_plc_framepatternsleft).w
-		moveq	#0,d0
-		move.w	(v_plc_buffer+4).w,d0
-		addi.w	#$120,(v_plc_buffer+4).w
-		bra.s	loc_1676
-; End of function sub_1642
-
-
-; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
-
-
-; sub_165E:
-ProcessDPLC2:
-		tst.w	(v_plc_patternsleft).w
-		beq.s	locret_16DA
-		move.w	#3,(v_plc_framepatternsleft).w
-		moveq	#0,d0
-		move.w	(v_plc_buffer+4).w,d0
-		addi.w	#$60,(v_plc_buffer+4).w
-
-loc_1676:
-		lea	(vdp_control_port).l,a4
-		lsl.l	#2,d0
-		lsr.w	#2,d0
-		ori.w	#$4000,d0
-		swap	d0
-		move.l	d0,(a4)
-		subq.w	#4,a4
-		movea.l	(v_plc_buffer).w,a0
-		movea.l	(v_plc_ptrnemcode).w,a3
-		move.l	(v_plc_repeatcount).w,d0
-		move.l	(v_plc_paletteindex).w,d1
-		move.l	(v_plc_previousrow).w,d2
-		move.l	(v_plc_dataword).w,d5
-		move.l	(v_plc_shiftvalue).w,d6
-		lea	(v_ngfx_buffer).w,a1
-
-loc_16AA:
-		movea.w	#8,a5
-		bsr.w	NemPCD_NewRow
-		subq.w	#1,(v_plc_patternsleft).w
-		beq.s	loc_16DC
-		subq.w	#1,(v_plc_framepatternsleft).w
-		bne.s	loc_16AA
-		move.l	a0,(v_plc_buffer).w
-		move.l	a3,(v_plc_ptrnemcode).w
-		move.l	d0,(v_plc_repeatcount).w
-		move.l	d1,(v_plc_paletteindex).w
-		move.l	d2,(v_plc_previousrow).w
-		move.l	d5,(v_plc_dataword).w
-		move.l	d6,(v_plc_shiftvalue).w
-
-locret_16DA:
-		rts	
-; ===========================================================================
-
-loc_16DC:
-		lea	(v_plc_buffer).w,a0
-		moveq	#(v_plc_buffer_only_end-v_plc_buffer-6)/4-1,d0
-
-loc_16E2:
-		move.l	6(a0),(a0)+
-		dbf	d0,loc_16E2
-
-	if FixBugs
-		; The above code does not properly 'pop' the 16th PLC entry.
-		; Because of this, occupying the 16th slot will cause it to
-		; be repeatedly decompressed infinitely.
-		; Granted, this could be conisdered more of an optimisation
-		; than a bug: treating the 16th entry as a dummy that
-		; should never be occupied makes this code unnecessary.
-		; Still, the overhead of this code is minimal.
-	if (v_plc_buffer_only_end-v_plc_buffer-6)&2
-		move.w	6(a0),(a0)
-	endif
-
-		clr.l	(v_plc_buffer_only_end-6).w
-	endif
-
-		rts	
-; End of function ProcessDPLC2
+;sub_1642:
+;		tst.w	(v_plc_patternsleft).w
+;		beq.w	locret_16DA
+;		move.w	#9,(v_plc_framepatternsleft).w
+;		moveq	#0,d0
+;		move.w	(v_plc_buffer+4).w,d0
+;		addi.w	#$120,(v_plc_buffer+4).w
+;		bra.s	loc_1676
+;; End of function sub_1642
+;
+;
+;; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+;
+;
+;; sub_165E:
+;ProcessDPLC2:
+;		tst.w	(v_plc_patternsleft).w
+;		beq.s	locret_16DA
+;		move.w	#3,(v_plc_framepatternsleft).w
+;		moveq	#0,d0
+;		move.w	(v_plc_buffer+4).w,d0
+;		addi.w	#$60,(v_plc_buffer+4).w
+;
+;loc_1676:
+;		lea	(vdp_control_port).l,a4
+;		lsl.l	#2,d0
+;		lsr.w	#2,d0
+;		ori.w	#$4000,d0
+;		swap	d0
+;		move.l	d0,(a4)
+;		subq.w	#4,a4
+;		movea.l	(v_plc_buffer).w,a0
+;		movea.l	(v_plc_ptrnemcode).w,a3
+;		move.l	(v_plc_repeatcount).w,d0
+;		move.l	(v_plc_paletteindex).w,d1
+;		move.l	(v_plc_previousrow).w,d2
+;		move.l	(v_plc_dataword).w,d5
+;		move.l	(v_plc_shiftvalue).w,d6
+;		lea	(v_ngfx_buffer).w,a1
+;
+;loc_16AA:
+;		movea.w	#8,a5
+;		bsr.w	NemPCD_NewRow
+;		subq.w	#1,(v_plc_patternsleft).w
+;		beq.s	loc_16DC
+;		subq.w	#1,(v_plc_framepatternsleft).w
+;		bne.s	loc_16AA
+;		move.l	a0,(v_plc_buffer).w
+;		move.l	a3,(v_plc_ptrnemcode).w
+;		move.l	d0,(v_plc_repeatcount).w
+;		move.l	d1,(v_plc_paletteindex).w
+;		move.l	d2,(v_plc_previousrow).w
+;		move.l	d5,(v_plc_dataword).w
+;		move.l	d6,(v_plc_shiftvalue).w
+;
+;locret_16DA:
+;		rts	
+;; ===========================================================================
+;
+;loc_16DC:
+;		lea	(v_plc_buffer).w,a0
+;		moveq	#(v_plc_buffer_only_end-v_plc_buffer-6)/4-1,d0
+;
+;loc_16E2:
+;		move.l	6(a0),(a0)+
+;		dbf	d0,loc_16E2
+;
+;	if FixBugs
+;		; The above code does not properly 'pop' the 16th PLC entry.
+;		; Because of this, occupying the 16th slot will cause it to
+;		; be repeatedly decompressed infinitely.
+;		; Granted, this could be conisdered more of an optimisation
+;		; than a bug: treating the 16th entry as a dummy that
+;		; should never be occupied makes this code unnecessary.
+;		; Still, the overhead of this code is minimal.
+;	if (v_plc_buffer_only_end-v_plc_buffer-6)&2
+;		move.w	6(a0),(a0)
+;	endif
+;
+;		clr.l	(v_plc_buffer_only_end-6).w
+;	endif
+;
+;		rts	
+;; End of function ProcessDPLC2
 
 ; ---------------------------------------------------------------------------
 ; Subroutine to	execute	the pattern load cue
@@ -1376,6 +1343,10 @@ loc_16E2:
 QuickPLC:
 		bsr.w	NewPLC
 
+FlushPLC:
+		stopZ80
+		waitZ80
+
 .loop:
 		jsr	NLZ_DecompressFromQueue(pc)
 		jsr	NLZ_FlushBuffer(pc)
@@ -1383,26 +1354,9 @@ QuickPLC:
 		bne.s	.loop
 		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
 		bne.s	.loop
-		rts
 
-;		lea	(ArtLoadCues).l,a1 ; load the PLC index
-;		add.w	d0,d0
-;		move.w	(a1,d0.w),d0
-;		lea	(a1,d0.w),a1
-;		move.w	(a1)+,d1	; get length of PLC
-;
-;Qplc_Loop:
-;		movea.l	(a1)+,a0	; get art pointer
-;		moveq	#0,d0
-;		move.w	(a1)+,d0	; get VRAM address
-;		lsl.l	#2,d0
-;		lsr.w	#2,d0
-;		ori.w	#$4000,d0
-;		swap	d0
-;		move.l	d0,(vdp_control_port).l ; converted VRAM address to VDP format
-;		bsr.w	NemDec		; decompress
-;		dbf	d1,Qplc_Loop	; repeat for length of PLC
-;		rts	
+		startZ80
+		rts
 ; End of function QuickPLC
 
 		include	"_inc/Enigma Decompression.asm"
@@ -1461,7 +1415,6 @@ PalFadeIn_Alt:				; start position and size are already set
 		move.b	#$12,(v_vbla_routine).w
 		bsr.w	WaitForVBla
 		bsr.s	FadeIn_FromBlack
-	;	bsr.w	RunPLC
 		dbf	d4,.mainloop
 		rts	
 ; End of function PaletteFadeIn
@@ -1556,7 +1509,6 @@ PaletteFadeOut:
 		move.b	#$12,(v_vbla_routine).w
 		bsr.w	WaitForVBla
 		bsr.s	FadeOut_ToBlack
-	;	bsr.w	RunPLC
 		dbf	d4,.mainloop
 		rts	
 ; End of function PaletteFadeOut
@@ -1650,7 +1602,6 @@ PaletteWhiteIn:
 		move.b	#$12,(v_vbla_routine).w
 		bsr.w	WaitForVBla
 		bsr.s	WhiteIn_FromWhite
-	;	bsr.w	RunPLC
 		dbf	d4,.mainloop
 		rts	
 ; End of function PaletteWhiteIn
@@ -1744,7 +1695,6 @@ PaletteWhiteOut:
 		move.b	#$12,(v_vbla_routine).w
 		bsr.w	WaitForVBla
 		bsr.s	WhiteOut_ToWhite
-	;	bsr.w	RunPLC
 		dbf	d4,.mainloop
 		rts	
 ; End of function PaletteWhiteOut
@@ -2061,7 +2011,7 @@ WaitForVBla:
 GM_Sega:
 		move.b	#bgm_Stop,d0
 		bsr.w	PlaySound_Special ; stop music
-	;	bsr.w	ClearPLC
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	PaletteFadeOut
 		lea	(vdp_control_port).l,a6
 		move.w	#$8004,(a6)	; use 8-colour mode
@@ -2076,18 +2026,11 @@ GM_Sega:
 		move.w	d0,(vdp_control_port).l
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 
 		moveq	#0,d1
 		lea	(Nem_SegaLogo).l,a1 ; load Sega	logo patterns
 		jsr	NLZ_AddArtToQueue.w
-
-;.loop:
-;		jsr	NLZ_DecompressFromQueue.w
-;		jsr	NLZ_FlushBuffer.w
-;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-;		bne.s	.loop
-;	;	bsr.w	NemDec
+		jsr	FlushPLC.w
 
 		lea	(v_128x128&$FFFFFF).l,a1
 		lea	(Eni_SegaLogo).l,a0 ; load Sega	logo mappings
@@ -2146,7 +2089,7 @@ Sega_GotoTitle:
 GM_Title:
 		move.b	#bgm_Stop,d0
 		bsr.w	PlaySound_Special ; stop music
-	;	bsr.w	ClearPLC
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	PaletteFadeOut
 		disable_ints
 		bsr.w	DACDriverLoad
@@ -2161,7 +2104,6 @@ GM_Title:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -2172,15 +2114,8 @@ GM_Title:
 		move.w	#ArtTile_Sonic_Team_Font*$20,d1
 		lea	(Nem_CreditText).l,a1 ;	load alphabet
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-;.loop:
-;		jsr	NLZ_DecompressFromQueue.w
-;		jsr	NLZ_FlushBuffer.w
-;		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-;		bne.s	.loop
-;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-;		bne.s	.loop
+		
+		jsr	FlushPLC.w
 	
 		lea	(v_128x128&$FFFFFF).l,a1
 		lea	(Eni_JapNames).l,a0 ; load mappings for	Japanese credits
@@ -2202,25 +2137,16 @@ GM_Title:
 		move.w	#ArtTile_Title_Foreground*$20,d1
 		lea	(Nem_TitleFg).l,a1 ; load title	screen patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
 
 		move.w	#ArtTile_Title_Sonic*$20,d1
 		lea	(Nem_TitleSonic).l,a1 ;	load Sonic title screen	patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
 
 		move.w	#ArtTile_Title_Trademark*$20,d1
 		lea	(Nem_TitleTM).l,a1 ; load "TM" patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
 	
-;.loop2:
-;		jsr	NLZ_DecompressFromQueue.w
-;		jsr	NLZ_FlushBuffer.w
-;		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-;		bne.s	.loop2
-;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-;		bne.s	.loop2
+		jsr	FlushPLC.w
 
 		lea	(vdp_data_port).l,a6
 		locVRAM	ArtTile_Level_Select_Font*$20,4(a6)
@@ -2266,13 +2192,7 @@ Tit_LoadText:
 		move.w	#ArtTile_Level*$20,d1
 		lea	(Nem_GHZ_1st).l,a1 ; load GHZ patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-;.loop:
-;		jsr	NLZ_DecompressFromQueue.w
-;		jsr	NLZ_FlushBuffer.w
-;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-;		bne.s	.loop
+		jsr	FlushPLC.w
 
 		moveq	#palid_Title,d0	; load title screen palette
 		bsr.w	PalLoad1
@@ -2324,7 +2244,6 @@ Tit_MainLoop:
 		bsr.w	DeformLayers
 		jsr	(BuildSprites).l
 		bsr.w	PalCycle_Title
-	;	bsr.w	RunPLC
 		move.w	(v_player+obX).w,d0
 		addq.w	#2,d0
 		move.w	d0,(v_player+obX).w ; move Sonic to the right
@@ -2420,9 +2339,9 @@ Tit_ClrScroll2:
 
 LevelSelect:
 		move.b	#4,(v_vbla_routine).w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	LevSelControls
-	;	bsr.w	RunPLC
 		tst.l	(v_plc_buffer).w
 		bne.s	LevelSelect
 		andi.b	#btnABC+btnStart,(v_jpadpress1).w ; is A, B, C, or Start pressed?
@@ -2584,7 +2503,6 @@ loc_33B6:
 		bsr.w	WaitForVBla
 		bsr.w	DeformLayers
 		bsr.w	PaletteCycle
-	;	bsr.w	RunPLC
 		move.w	(v_player+obX).w,d0
 		addq.w	#2,d0
 		move.w	d0,(v_player+obX).w
@@ -2839,25 +2757,16 @@ GM_Level:
 		bsr.w	PlaySound_Special ; fade out music
 
 Level_NoMusicFade:
-	;	bsr.w	ClearPLC
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	PaletteFadeOut
 		tst.w	(f_demo).w	; is an ending sequence demo running?
 		bmi.s	Level_ClrRam	; if yes, branch
 		disable_ints
-
-	;	ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 		
 		move.w	#ArtTile_Title_Card*$20,d1
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-;.loop:
-;		jsr	NLZ_DecompressFromQueue.w
-;		jsr	NLZ_FlushBuffer.w
-;		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-;		bne.s	.loop
+		jsr	FlushPLC.w
 	
 		enable_ints
 		moveq	#0,d0
@@ -2894,7 +2803,6 @@ Level_ClrRam:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
-	;	jsr	NLZ_InitializeQueue.w
 
 		cmpi.b	#id_LZ,(v_zone).w ; is level LZ?
 		bne.s	Level_LoadPal	; if not, branch
@@ -2957,7 +2865,6 @@ Level_TtlCardLoop:
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
-	;	bsr.w	RunPLC
 		move.w	(v_ttlcardact+obX).w,d0
 		cmp.w	(v_ttlcardact+card_mainX).w,d0 ; has title card sequence finished?
 		bne.s	Level_TtlCardLoop ; if not, branch
@@ -3065,7 +2972,6 @@ Level_Delay:
 
 Level_DelayLoop:
 		move.b	#8,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		dbf	d1,Level_DelayLoop
 
@@ -3120,7 +3026,6 @@ Level_SkipScroll:
 		jsr	(BuildSprites).l
 		jsr	(ObjPosLoad).l
 		bsr.w	PaletteCycle
-	;	bsr.w	RunPLC
 		bsr.w	OscillateNumDo
 		bsr.w	SynchroAnimate
 		bsr.w	SignpostArtLoad
@@ -3162,7 +3067,6 @@ Level_FadeDemo:
 
 Level_FDLoop:
 		move.b	#8,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	MoveSonicInDemo
 		jsr	(ExecuteObjects).l
@@ -3422,7 +3326,6 @@ SS_Finish:
 
 SS_FinLoop:
 		move.b	#$16,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		bsr.w	MoveSonicInDemo
 		move.w	(v_jpadhold1).w,(v_jpadhold2).w
@@ -3448,18 +3351,11 @@ loc_47D4:
 		
 		jsr	(Hud_Base).l
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 		
 		move	#ArtTile_Title_Card*$20,d1
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	NLZ_FlushBuffer.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+		jsr	FlushPLC.w
 
 		enable_ints
 		moveq	#palid_SSResult,d0
@@ -3483,11 +3379,10 @@ loc_47D4:
 SS_NormalExit:
 		bsr.w	PauseGame
 		move.b	#$C,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
-	;	bsr.w	RunPLC
 		tst.w	(f_restart).w
 		beq.s	SS_NormalExit
 		tst.l	(v_plc_buffer).w
@@ -3792,6 +3687,7 @@ byte_4CCC:	dc.b 8,	2, 4, $FF, 2, 3, 8, $FF, 4, 2, 2, 3, 8,	$FD, 4,	2, 2, 3, 2, $
 ; ---------------------------------------------------------------------------
 
 GM_Continue:
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	PaletteFadeOut
 		disable_ints
 		move.w	(v_vdp_buffer1).w,d0
@@ -3802,32 +3698,22 @@ GM_Continue:
 		move.w	#$8700,(a6)	; background colour
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
 		move.w	#ArtTile_Title_Card*$20,d1
 		lea	(Nem_TitleCard).l,a1 ; load title card patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
 
 		move.w	#ArtTile_Continue_Sonic*$20,d1
 		lea	(Nem_ContSonic).l,a1 ; load Sonic patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-		
+
 		move.w	#ArtTile_Mini_Sonic*$20,d1
 		lea	(Nem_MiniSonic).l,a1 ; load continue screen patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	NLZ_FlushBuffer.w
-		tst.l	(nlzQueueHead).w	; Test if there are any more entries in the queue after this	
-		bne.s	.loop
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+
+		jsr	FlushPLC.w
 
 		moveq	#10,d1
 		jsr	(ContScrCounter).l	; run countdown	(start from 10)
@@ -3858,7 +3744,6 @@ GM_Continue:
 
 Cont_MainLoop:
 		move.b	#$16,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		cmpi.b	#6,(v_player+obRoutine).w
 		bhs.s	loc_4DF2
@@ -3908,6 +3793,7 @@ GM_Ending:
 		move.b	#bgm_Stop,d0
 		bsr.w	PlaySound_Special ; stop music
 		bsr.w	PaletteFadeOut
+		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 		clearRAM v_misc_variables,v_misc_variables_end
@@ -3930,7 +3816,6 @@ GM_Ending:
 		move.w	#$8A00+223,(v_hbla_hreg).w ; set palette change position (for water)
 		move.w	(v_hbla_hreg).w,(a6)
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 
 		move.w	#30,(v_air).w
 		move.w	#id_EndZ<<8,(v_zone).w ; set level number to 0600 (extra flowers)
@@ -3992,7 +3877,6 @@ End_LoadSonic:
 		move.b	#0,(f_timecount).w
 		move.w	#1800,(v_demolength).w
 		move.b	#$18,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		move.w	(v_vdp_buffer1).w,d0
 		ori.b	#$40,d0
@@ -4007,7 +3891,6 @@ End_LoadSonic:
 End_MainLoop:
 		bsr.w	PauseGame
 		move.b	#$18,(v_vbla_routine).w
-		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		addq.w	#1,(v_framecount).w
 		bsr.w	End_MoveSonic
@@ -4039,7 +3922,6 @@ End_ChkEmerald:
 End_AllEmlds:
 		bsr.w	PauseGame
 		move.b	#$18,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		addq.w	#1,(v_framecount).w
 		bsr.w	End_MoveSonic
@@ -4136,7 +4018,7 @@ Map_ESth:	include	"_maps/Ending Sequence STH.asm"
 ; ---------------------------------------------------------------------------
 
 GM_Credits:
-	;	bsr.w	ClearPLC
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	PaletteFadeOut
 		lea	(vdp_control_port).l,a6
 		move.w	#$8004,(a6)		; 8-colour mode
@@ -4149,20 +4031,13 @@ GM_Credits:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
 		move.w	#ArtTile_Credits_Font*$20,d1
 		lea	(Nem_CreditText).l,a1 ;	load credits alphabet patterns
 		jsr	NLZ_AddArtToQueue.w
-	;	bsr.w	NemDec
-	
-.loop:
-		jsr	NLZ_DecompressFromQueue.w
-		jsr	NLZ_FlushBuffer.w
-		tst.w	(nlzLastModSize).w	; Test if the last module of the last entry has been transfered
-		bne.s	.loop
+		jsr	FlushPLC.w
 
 		clearRAM v_pal_dry_dup,v_pal_dry_dup+16*4*2
 
@@ -4190,9 +4065,8 @@ Cred_SkipObjGfx:
 
 Cred_WaitLoop:
 		move.b	#4,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
+		jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
-	;	bsr.w	RunPLC
 		tst.w	(v_demolength).w ; have 2 seconds elapsed?
 		bne.s	Cred_WaitLoop	; if not, branch
 		tst.l	(v_plc_buffer).w ; have level gfx finished decompressing?
@@ -4265,7 +4139,7 @@ EndDemo_LampVar:
 ; ---------------------------------------------------------------------------
 
 TryAgainEnd:
-	;	bsr.w	ClearPLC
+		jsr	NLZ_InitializeQueue.w
 		bsr.w	PaletteFadeOut
 		lea	(vdp_control_port).l,a6
 		move.w	#$8004,(a6)	; use 8-colour mode
@@ -4278,7 +4152,6 @@ TryAgainEnd:
 		clr.b	(f_wtr_state).w
 		bsr.w	ClearScreen
 		ResetDMAQueue
-		jsr	NLZ_InitializeQueue.w
 
 		clearRAM v_objspace,v_objend
 
@@ -4302,7 +4175,6 @@ TryAgainEnd:
 TryAg_MainLoop:
 		bsr.w	PauseGame
 		move.b	#4,(v_vbla_routine).w
-	;	jsr	NLZ_DecompressFromQueue.w
 		bsr.w	WaitForVBla
 		jsr	(ExecuteObjects).l
 		jsr	(BuildSprites).l
