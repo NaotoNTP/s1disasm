@@ -87,9 +87,11 @@ NLZ_FlushAndBookmark:
 		tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
 		beq.s	.exit					; If not, branch and return.
 
+		tst.l	(nlzBookmarkPC).w			; Is a bookmark already set?
+		bne.s	.exit					; If so, branch and return.
+
 		movea.l	(nlzVIntSP).w,a0			; Load the address of the V-Int stack frame.
 		addq.w	#2,a0					; Point to the position of the return address.
-		
 		move.l	(a0),(nlzBookmarkPC).w			; Save the return address as the bookmark progam counter value.
 		move.l	#.setBookmark,(a0)			; Hijack the return address with the 2nd part of this routine.
 
@@ -214,6 +216,8 @@ NLZ_DecompressFromQueue:
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .resumeFromBookmark:
+		ori	#$700,sr				; Disable interrupts.
+
 		lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
 		clr.w	d0					; Clear register d0.
 		move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
@@ -223,11 +227,13 @@ NLZ_DecompressFromQueue:
 		move.b	(a1)+,d5				; Restore the copy mask (d5).
 		move.w	(a1)+,d6				; Restore the buffer size (d6).
 
+		move.l	(nlzBookmarkPC).w,-(sp)			; Restore the return address of the bookmark.
+		move.w	(nlzBookmarkSR).w,-(sp)			; Restore the status register state.
 		movem.w	(nlzBookmarkDn).w,d0-d3			; Restore the remaining data registers (d0-d3).
 		movem.l	(nlzBookmarkAn).w,a0-a3			; Restore the address registers (a0-a3).
-		move.l	(nlzBookmarkPC).w,-(sp)			; Restore the return address of the bookmark.
-		move.w	(nlzBookmarkSR).w,sr			; Restore the status register state.
-		rts						; Resume decompression from the point of bookmark.
+
+		clr.l	(nlzBookmarkPC).w			; Clear the bookmarked return address.
+		rtr						; Resume decompression from the point of bookmark.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .decNextModule:
@@ -349,8 +355,8 @@ NLZ_DecompressModule:
 		beq.s	.exit					; If not, skip over logic related to decompressing from the queue.
 
 		move.l	a0,(nlzNextModule).w			; Save the address where we left off as the beginning of the next module.
-		sf.b	(nlzBookmarkFlag).w			; Clear the bookmark flag.
 		st.b	(nlzFlushModule).w			; Set the flush module flag.
+		sf.b	(nlzBookmarkFlag).w			; Clear the bookmark flag.
 
 .exit:		
 		rts						; Return.
