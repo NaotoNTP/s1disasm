@@ -56,7 +56,7 @@ nlzBookmarkPC:		ds.l	1		; Space to backup the program counter address when setti
 VDP_Command_Buffer	ds.b	$FC		; $FC bytes, stores 18 VDP commands to issue next time ProcessDMAQueue is called.
 VDP_Command_Buffer_Slot	ds.l	1		; Longword, stores the next address for the DMA queue.
 
-			ds.b	$2C8
+BookmarkRegs:		ds.b	$2C8
 
 v_bgscroll_buffer:	ds.b	$200		; background scroll buffer
 v_ngfx_buffer:		ds.b	$200		; Nemesis graphics decompression buffer

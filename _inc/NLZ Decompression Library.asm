@@ -1,6 +1,18 @@
 ; =============================================================================================================================
 ; NLZ Decompressor and Queue Library - by NaotoNTP (2025)
 ; =============================================================================================================================
+
+_KosPlus_LoopUnroll := 3
+
+_KosPlus_ReadBit macro
+	dbf	d2,.skip
+	moveq	#7,d2								; We have 8 new bits, but will use one up below.
+	move.b	(a0)+,d0							; Get desc field low-byte.
+
+.skip
+	add.b	d0,d0								; Get a bit from the bitstream.
+    endm
+
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Initialize the NLZ art decompression queue.
 ; -----------------------------------------------------------------------------------------------------------------------------
@@ -100,8 +112,8 @@ NLZ_FlushAndBookmark:
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .setBookmark:
-		movem.w	d0-d3,(nlzBookmarkDn).w			; Save the state of the mutable data registers (d0-d3).
-		movem.l	a0-a3,(nlzBookmarkAn).w			; Save the state of the address registers (a0-a3).
+	;	movem.w	d0-d3,(nlzBookmarkDn).w			; Save the state of the mutable data registers (d0-d3).
+		movem.l	d0-a6,(BookmarkRegs).w			; Save the state of the address registers (a0-a3).
 		move.w	sr,(nlzBookmarkSR).w			; Save the state of the status register.
 		rts						; Return, effectively pausing decompression for now.
 
@@ -200,17 +212,38 @@ NLZ_DecompressFromQueue:
 
 		move.w	nque.dest(a0),(nlzVRAMDest).w		; Save the destination VRAM address.
 		movea.l	nque.src(a0),a0				; Load the source address of the NLZ archive into a0.
-		move.w	(a0)+,(nlzLastModSize).w		; Save the size of the last module (in words, not bytes).
-		move.b	(a0)+,(nlzModuleCount).w		; Save the module count (-1 since the first module will be immediately processed after this).
+
+		move.w	(a0)+,d3														; get uncompressed size
+		cmpi.w	#$A000,d3
+		bne.s	.Gotsize
+		move.w	#$8000,d3													; $A000 means $8000 for some reason
+
+.Gotsize:
+		lsr.w	d3
+		move.w	d3,d0
+		rol.w	#5,d0
+		andi.w	#$1F,d0														; get number of complete modules
+		move.b	d0,(nlzModuleCount).w
+		andi.w	#$7FF,d3													; get size of last module in words
+		bne.s	.Gotleftover													; branch if it's non-zero
+		subq.b	#1,(nlzModuleCount).w									; otherwise decrement the number of modules
+		move.w	#$1000/2,d3													; and take the size of the last module to be $800 words
+
+.Gotleftover:
+		move.w	d3,(nlzLastModSize).w
+	;	addq.b	#1,(nlzModuleCount).w
+	
+;		move.w	(a0)+,(nlzLastModSize).w		; Save the size of the last module (in words, not bytes).
+;		move.b	(a0)+,(nlzModuleCount).w		; Save the module count (-1 since the first module will be immediately processed after this).
 
 		lea	(nlzBuffer).w,a1			; Load the default buffer address into a1.
-		clr.w	d0					; Clear the lower word of d0.
-		move.b	(a0)+,d0				; Load the module configuration.
-		bne.s	.isModuled				; If the archive is indeed moduled, branch ahead.
-		lea	(nlzLgBuffer).l,a1			; Otherwise, we load the address of a larger buffer for the non-moduled archive.
-
-.isModuled:
-		move.b	d0,(nlzModuleConfig).w			; Save the the module configuration index.
+;		clr.w	d0					; Clear the lower word of d0.
+;		move.b	(a0)+,d0				; Load the module configuration.
+;		bne.s	.isModuled				; If the archive is indeed moduled, branch ahead.
+;		lea	(nlzLgBuffer).l,a1			; Otherwise, we load the address of a larger buffer for the non-moduled archive.
+;
+;isModuled:
+		move.b	#$10,(nlzModuleConfig).w		; Save the the module configuration index.
 		move.l	a1,(nlzBufferPtr).w			; Save the address of the decompression buffer we want to use.
 		bra.s	.decModule				; Branch ahead and decompress the first module.
 
@@ -218,19 +251,19 @@ NLZ_DecompressFromQueue:
 .resumeFromBookmark:
 		ori	#$700,sr				; Disable interrupts.
 
-		lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
-		clr.w	d0					; Clear register d0.
-		move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
-		adda.w	d0,a1					; Add it to get the configuration for this archive.
+	;	lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
+	;	clr.w	d0					; Clear register d0.
+	;	move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
+	;	adda.w	d0,a1					; Add it to get the configuration for this archive.
 
-		move.b	(a1)+,d4				; Restore the shift count (d4).
-		move.b	(a1)+,d5				; Restore the copy mask (d5).
-		move.w	(a1)+,d6				; Restore the buffer size (d6).
+	;	move.b	(a1)+,d4				; Restore the shift count (d4).
+	;	move.b	(a1)+,d5				; Restore the copy mask (d5).
+	;	move.w	(a1)+,d6				; Restore the buffer size (d6).
 
 		move.l	(nlzBookmarkPC).w,-(sp)			; Restore the return address of the bookmark.
 		move.w	(nlzBookmarkSR).w,-(sp)			; Restore the status register state.
-		movem.w	(nlzBookmarkDn).w,d0-d3			; Restore the remaining data registers (d0-d3).
-		movem.l	(nlzBookmarkAn).w,a0-a3			; Restore the address registers (a0-a3).
+	;	movem.w	(nlzBookmarkDn).w,d0-d3			; Restore the remaining data registers (d0-d3).
+		movem.l	(BookmarkRegs).w,d0-a6			; Restore the address registers (a0-a3).
 
 		clr.l	(nlzBookmarkPC).w			; Clear the bookmarked return address.
 		rtr						; Resume decompression from the point of bookmark.
@@ -240,18 +273,123 @@ NLZ_DecompressFromQueue:
 		movea.l	(nlzNextModule).w,a0			; Load the source address of the next module in the current NLZ archive into a0.
 		
 .decModule:
-		lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
-		clr.w	d0					; Clear register d0.
-		move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
-		adda.w	d0,a1					; Add it to get the configuration for this archive.
+	;	lea	NLZ_ModuleConfig(pc),a1			; Load the address of the module configuration table.
+	;	clr.w	d0					; Clear register d0.
+	;	move.b	(nlzModuleConfig).w,d0			; Load the module configuration offset.
+	;	adda.w	d0,a1					; Add it to get the configuration for this archive.
 
-		move.b	(a1)+,d4				; Load the shift count into d4.
-		move.b	(a1)+,d5				; Load the copy mask into d5.
-		move.w	(a1)+,d6				; Load the buffer size into d6.
+	;	move.b	(a1)+,d4				; Load the shift count into d4.
+	;	move.b	(a1)+,d5				; Load the copy mask into d5.
+	;	move.w	(a1)+,d6				; Load the buffer size into d6.
 		movea.l	(nlzBufferPtr).w,a1			; Load the address of the decompression buffer into a1.
 
 		st.b	(nlzBookmarkFlag).w			; Set the bookmark flag.
-		bra.s	NLZ_DecompressModule			; Decompress the next module (returns from this routine; cannot be a subroutine call due to bookmarking logic).
+;		bra.s	NLZ_DecompressModule			; Decompress the next module (returns from this routine; cannot be a subroutine call due to bookmarking logic).
+
+	if _KosPlus_LoopUnroll>0
+		moveq	#(1<<_KosPlus_LoopUnroll)-1,d7
+	endif
+		moveq	#0,d2								; flag as having no bits left.
+		bra.s	.FetchNewCode
+; ---------------------------------------------------------------------------
+
+.FetchCodeLoop:
+
+		; code 1 (Uncompressed byte).
+		move.b	(a0)+,(a1)+
+
+.FetchNewCode:
+	_KosPlus_ReadBit
+		blo.s		.FetchCodeLoop						; if code = 1, branch.
+
+		; codes 00 and 01.
+		moveq	#-1,d5
+		lea	(a1),a5
+	_KosPlus_ReadBit
+		blo.s		.Code_01
+
+		; code 00 (Dictionary ref. short).
+		move.b	(a0)+,d5								; d5 = displacement.
+		adda.w	d5,a5
+
+		; always copy at least two bytes.
+		move.b	(a5)+,(a1)+
+		move.b	(a5)+,(a1)+
+	_KosPlus_ReadBit
+		bhs.s	.Copy_01
+		move.b	(a5)+,(a1)+
+		move.b	(a5)+,(a1)+
+
+.Copy_01:
+	_KosPlus_ReadBit
+		bhs.s	.FetchNewCode
+		move.b	(a5)+,(a1)+
+		bra.s	.FetchNewCode
+; ---------------------------------------------------------------------------
+.Code_01:
+		moveq	#0,d4								; d4 will contain copy count.
+
+		; code 01 (Dictionary ref. long / special).
+		move.b	(a0)+,d4								; d4 = %HHHHHCCC.
+		move.b	d4,d5								; d5 = %11111111 HHHHHCCC.
+		lsl.w	#5,d5									; d5 = %111HHHHH CCC00000.
+		move.b	(a0)+,d5								; d5 = %111HHHHH LLLLLLLL.
+
+	if _KosPlus_LoopUnroll==3
+		and.w	d7,d4								; d4 = %00000CCC.
+	else
+		andi.w	#7,d4
+	endif
+
+	if _KosPlus_LoopUnroll>0
+		bne.s	.StreamCopy							; if CCC=0, branch.
+
+		; special mode (extended counter)
+		move.b	(a0)+,d4								; read cnt
+		beq.s	.Quit								; if cnt=0, quit decompression.
+
+		adda.w	d5,a5
+		move.w	d4,d6
+		not.w	d6
+		and.w	d7,d6
+		add.w	d6,d6
+		lsr.w	#_KosPlus_LoopUnroll,d4
+		jmp	.largecopy(pc,d6.w)
+	else
+		beq.s	.dolargecopy
+	endif
+; ---------------------------------------------------------------------------
+
+.StreamCopy:
+		adda.w	d5,a5
+		move.b	(a5)+,(a1)+							; do 1 extra copy (to compensate +1 to copy counter).
+		add.w	d4,d4
+		jmp	.mediumcopy-2(pc,d4.w)
+; ---------------------------------------------------------------------------
+
+	if _KosPlus_LoopUnroll==0
+.dolargecopy:
+
+		; special mode (extended counter)
+		move.b	(a0)+,d4								; read cnt
+		beq.s	.Quit								; if cnt=0, quit decompression.
+		adda.w	d5,a5
+	endif
+
+.largecopy:
+	rept (1<<_KosPlus_LoopUnroll)
+		move.b	(a5)+,(a1)+
+	endm
+		dbf	d4,.largecopy
+
+.mediumcopy:
+	rept 8
+		move.b	(a5)+,(a1)+
+	endm
+		bra.w	.FetchNewCode
+; ---------------------------------------------------------------------------
+
+.Quit:
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Decompress an NLZ archive directly to a specified destination.
@@ -263,24 +401,24 @@ NLZ_DecompressFromQueue:
 ; USED:
 ;	d0-d7/a0-a3
 ; -----------------------------------------------------------------------------------------------------------------------------
-NLZ_DecompressDirect:
-		addq.l	#2,a0					; Skip the 'last module size' section of the header
-		
-		clr.w	d7					; Clear the lower word of d7 to use as a loop counter.
-		move.b	(a0)+,d7				; Load the module count - 1 as the loop counter.
-		clr.w	d0					; Clear the lower word of d0 so we can use it as a table offset.
-		move.b	(a0)+,d0				; Load the module configuration into d0.
-
-		lea	NLZ_ModuleConfig(pc),a3			; Load the address of the module configuration table.
-		adda.w	d0,a3					; Add the module configuration offset.
-		move.b	(a3)+,d4				; Load the shift count into d4.
-		move.b	(a3)+,d5				; Load the copy mask into d5.
-		clr.w	d6					; Clear the lower word of d6, nullifying th buffer size parameter.
-
-.decAllModules:
-		bsr.s	NLZ_DecompressModule			; Decompress a single module in the archive.
-		dbf	d7,.decAllModules			; Loop until all modules are decompressed in one continuous stream.
-		rts						; Return.
+;NLZ_DecompressDirect:
+;		addq.l	#2,a0					; Skip the 'last module size' section of the header
+;		
+;		clr.w	d7					; Clear the lower word of d7 to use as a loop counter.
+;		move.b	(a0)+,d7				; Load the module count - 1 as the loop counter.
+;		clr.w	d0					; Clear the lower word of d0 so we can use it as a table offset.
+;		move.b	(a0)+,d0				; Load the module configuration into d0.
+;
+;		lea	NLZ_ModuleConfig(pc),a3			; Load the address of the module configuration table.
+;		adda.w	d0,a3					; Add the module configuration offset.
+;		move.b	(a3)+,d4				; Load the shift count into d4.
+;		move.b	(a3)+,d5				; Load the copy mask into d5.
+;		clr.w	d6					; Clear the lower word of d6, nullifying th buffer size parameter.
+;
+;.decAllModules:
+;		bsr.s	NLZ_DecompressModule			; Decompress a single module in the archive.
+;		dbf	d7,.decAllModules			; Loop until all modules are decompressed in one continuous stream.
+;		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Decompress a single NLZ module.
@@ -295,107 +433,107 @@ NLZ_DecompressDirect:
 ; USED:
 ;	d0-d6/a0-a3
 ; -----------------------------------------------------------------------------------------------------------------------------
-NLZ_DecompressModule:
-		movea.l	a1,a3
-		moveq	#0,d1					; Clear the read-bit counter.
-		bra.s	.rollDescField				; Branch and roll the description field.
-
-; -----------------------------------------------------------------------------------------------------------------------------
-.copyUncByte:
-		move.b	(a0)+,(a1)+				; Copy an uncompressed byte to the output buffer.
-
-.rollDescField:
-		dbf	d1,.rollCurrent				; Decrement the read-bit counter and branch if there are still more bits to read from the current description field.
-		moveq	#7,d1					; Otherwise, we reset the counter and load the next description field.
-		move.b	(a0)+,d0				; ^
-
-.rollCurrent:	
-		add.b	d0,d0					; Roll the description field by a single bit
-		bcc.s	.copyUncByte				; If the next packet is an uncompressed byte, branch. Otherwise, continue.
-
-; -----------------------------------------------------------------------------------------------------------------------------
-.chkFieldDepleted:
-		dbf	d1,.bitsLeft				; Decrement the read-bit counter and branch if there are still more bits to read from the current description field.
-		moveq	#7,d1					; Otherwise, we reset the counter and load the next description field.
-		move.b	(a0)+,d0				; ^
-
-.bitsLeft:	
-		moveq	#0,d2					; Load the first byte of the dictionary match packet to registers d2 and d3.
-		move.b	(a0)+,d2				; ^
-		move.w	d2,d3					; ^
-
-.rollMatchType:		
-		add.b	d0,d0					; Roll the description field by a single bit.
-		bcs.s	.fullMatch				; If the next packet is a full dictionary match, branch. Otherwise, continue.
-
-; -----------------------------------------------------------------------------------------------------------------------------
+;NLZ_DecompressModule:
+;		movea.l	a1,a3
+;		moveq	#0,d1					; Clear the read-bit counter.
+;		bra.s	.rollDescField				; Branch and roll the description field.
+;
+;; -----------------------------------------------------------------------------------------------------------------------------
+;.copyUncByte:
+;		move.b	(a0)+,(a1)+				; Copy an uncompressed byte to the output buffer.
+;
+;.rollDescField:
+;		dbf	d1,.rollCurrent				; Decrement the read-bit counter and branch if there are still more bits to read from the current description field.
+;		moveq	#7,d1					; Otherwise, we reset the counter and load the next description field.
+;		move.b	(a0)+,d0				; ^
+;
+;.rollCurrent:	
+;		add.b	d0,d0					; Roll the description field by a single bit
+;		bcc.s	.copyUncByte				; If the next packet is an uncompressed byte, branch. Otherwise, continue.
+;
+;; -----------------------------------------------------------------------------------------------------------------------------
+;.chkFieldDepleted:
+;		dbf	d1,.bitsLeft				; Decrement the read-bit counter and branch if there are still more bits to read from the current description field.
+;		moveq	#7,d1					; Otherwise, we reset the counter and load the next description field.
+;		move.b	(a0)+,d0				; ^
+;
+;.bitsLeft:	
+;		moveq	#0,d2					; Load the first byte of the dictionary match packet to registers d2 and d3.
+;		move.b	(a0)+,d2				; ^
+;		move.w	d2,d3					; ^
+;
+;.rollMatchType:		
+;		add.b	d0,d0					; Roll the description field by a single bit.
+;		bcs.s	.fullMatch				; If the next packet is a full dictionary match, branch. Otherwise, continue.
+;
+;; -----------------------------------------------------------------------------------------------------------------------------
 .nearbyMatch:
-		lsr.w	#2,d3					; Shift the d3 right by 2 and logically NOT it to get the match displacement.
-		not.w	d3					; ^
-		andi.w	#%11,d2					; Logically AND the lower 2 bits of d2 to get the copy length.
-		beq.s	.readExtCopyLen				; If the copy length zero, read an extended copy byte.
+	;	lsr.w	#2,d3					; Shift the d3 right by 2 and logically NOT it to get the match displacement.
+	;	not.w	d3					; ^
+	;	andi.w	#%11,d2					; Logically AND the lower 2 bits of d2 to get the copy length.
+	;	beq.s	.readExtCopyLen				; If the copy length zero, read an extended copy byte.
 
-		lea	(a1,d3.w),a2				; Load the location of the dictionary match into register a2.
-		cmpa.l	a3,a2					; Is the dictionary match still in bounds?
-		bhs.s	.copyLoop				; If so, branch.
-		add.w	d6,a2					; Otherwise, add the buffer size to wrap the match location around.
+	;	lea	(a1,d3.w),a2				; Load the location of the dictionary match into register a2.
+	;	cmpa.l	a3,a2					; Is the dictionary match still in bounds?
+	;	bhs.s	.copyLoop				; If so, branch.
+	;	add.w	d6,a2					; Otherwise, add the buffer size to wrap the match location around.
 
 .copyLoop:
-		move.b	(a2)+,(a1)+				; Copy the bytes in a loop.
-		dbf	d2,.copyLoop				; ^
-		bra.s	.rollDescField				; Branch back and handle the next packet.
+	;	move.b	(a2)+,(a1)+				; Copy the bytes in a loop.
+	;	dbf	d2,.copyLoop				; ^
+	;	bra.s	.rollDescField				; Branch back and handle the next packet.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .readExtCopyLen:
-		move.b	(a0)+,d2				; Load the extended copy length byte.
-		bne.s	.gotCopyLen				; If the copy length is non-zero, branch and perform the match copy.
+	;	move.b	(a0)+,d2				; Load the extended copy length byte.
+	;	bne.s	.gotCopyLen				; If the copy length is non-zero, branch and perform the match copy.
 
 	; Otherwise, this is the terminating packet and we are finished with decompression.	
-		tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
-		beq.s	.exit					; If not, skip over logic related to decompressing from the queue.
+	;	tst.b	(nlzBookmarkFlag).w			; Is the bookmark flag set?
+	;	beq.s	.exit					; If not, skip over logic related to decompressing from the queue.
 
 		move.l	a0,(nlzNextModule).w			; Save the address where we left off as the beginning of the next module.
 		st.b	(nlzFlushModule).w			; Set the flush module flag.
 		sf.b	(nlzBookmarkFlag).w			; Clear the bookmark flag.
 
-.exit:		
+;.exit:		
 		rts						; Return.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 .fullMatch:
-		lsl.w	d4,d3					; Shift the d3 left by the shift count, load the next byte, and logically NOT the whole register to get the match displacement.
-		move.b	(a0)+,d3				; ^
-		not.w	d3					; ^
-		and.w	d5,d2					; Logically AND d2 against the copy length bit mask to get the copy length.
-		beq.s	.readExtCopyLen				; If the copy length is zero, branch and read the extneded copy length byte.
+	;	lsl.w	d4,d3					; Shift the d3 left by the shift count, load the next byte, and logically NOT the whole register to get the match displacement.
+	;	move.b	(a0)+,d3				; ^
+	;	not.w	d3					; ^
+	;	and.w	d5,d2					; Logically AND d2 against the copy length bit mask to get the copy length.
+	;	beq.s	.readExtCopyLen				; If the copy length is zero, branch and read the extneded copy length byte.
 		
-		addq.w	#1,d2					; Otherwise, increment the copy length to its true value and continue.
+	;	addq.w	#1,d2					; Otherwise, increment the copy length to its true value and continue.
 
 .gotCopyLen:	
-		lea	(a1,d3.w),a2				; Load the location of the dictionary match into register a2.
-		cmpa.l	a3,a2					; Is the dictionary match still in bounds?
-		bhs.s	.inBounds				; If so, branch.
-		add.w	d6,a2					; Otherwise, add the buffer size to wrap the match location around.
+	;	lea	(a1,d3.w),a2				; Load the location of the dictionary match into register a2.
+	;	cmpa.l	a3,a2					; Is the dictionary match still in bounds?
+	;	bhs.s	.inBounds				; If so, branch.
+	;	add.w	d6,a2					; Otherwise, add the buffer size to wrap the match location around.
 
 .inBounds:
-		moveq	#%11,d3					; Separate the copy count into longwords and bytes.
-		and.w	d2,d3					; ^
-		lsr.w	#2,d2					; ^
-		beq.s	.copyBytes				; ^
+	;	moveq	#%11,d3					; Separate the copy count into longwords and bytes.
+	;	and.w	d2,d3					; ^
+	;	lsr.w	#2,d2					; ^
+	;	beq.s	.copyBytes				; ^
 
-		subq.w	#1,d2					; Decrement the longword copy count to make it into a loop counter.
+	;	subq.w	#1,d2					; Decrement the longword copy count to make it into a loop counter.
 
 .copyLongs:
-		move.b	(a2)+,(a1)+				; Copy unaligned longwords in a loop.
-		move.b	(a2)+,(a1)+				; ^
-		move.b	(a2)+,(a1)+				; ^
-		move.b	(a2)+,(a1)+				; ^
-		dbf	d2,.copyLongs				; ^
+	;	move.b	(a2)+,(a1)+				; Copy unaligned longwords in a loop.
+	;	move.b	(a2)+,(a1)+				; ^
+	;	move.b	(a2)+,(a1)+				; ^
+	;	move.b	(a2)+,(a1)+				; ^
+	;	dbf	d2,.copyLongs				; ^
 
 .copyBytes:
-		move.b	(a2)+,(a1)+				; Copy the remaining bytes in a loop.
-		dbf	d3,.copyBytes				; ^
-		bra.w	.rollDescField				; Branch back and handle the next packet.
+	;	move.b	(a2)+,(a1)+				; Copy the remaining bytes in a loop.
+	;	dbf	d3,.copyBytes				; ^
+	;	bra.w	.rollDescField				; Branch back and handle the next packet.
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Table containing information related to module configurations
