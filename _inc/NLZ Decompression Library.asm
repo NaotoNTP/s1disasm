@@ -378,6 +378,9 @@ NLZ_DecompressModule:
 		add.w	d6,a2					; Otherwise, add the buffer size to wrap the match location around.
 
 .inBounds:
+; -----------------------------------------------------------------------------------------------------------------------------
+	; Default Match Copy Logic (Smaller size, reasonably fast speed)
+	if (NLZ_FAST_COPY==0)
 		moveq	#%11,d3					; Separate the copy count into longwords and bytes.
 		and.w	d2,d3					; ^
 		lsr.w	#2,d2					; ^
@@ -396,6 +399,22 @@ NLZ_DecompressModule:
 		move.b	(a2)+,(a1)+				; Copy the remaining bytes in a loop.
 		dbf	d3,.copyBytes				; ^
 		bra.w	.rollDescField				; Branch back and handle the next packet.
+
+; -----------------------------------------------------------------------------------------------------------------------------	
+	; Fast Match Copy Logic (Larger size, fastest possible speed)
+	else
+		move.w	#$100,d3				; Move the maximum possible copy length into d3.
+		addq.w	#1,d2					; Increment d2 to reflect the copy length's true value.
+		sub.w	d2,d3					; Subtract the copy length from the maximum value to get the copy device index.
+		add.w	d3,d3					; Double the index value to make d3 into an offset.
+		jmp	.copyDevice(pc,d3.w)			; Jump to the appropriate position in the copy device and copy the match
+
+.copyDevice:		
+	rept	$100
+		move.b	(a2)+,(a1)+				; Copy a single byte of the match to the buffer.
+	endr
+		bra.w	.rollDescField				; Branch back and handle the next packet.
+	endif	
 
 ; -----------------------------------------------------------------------------------------------------------------------------
 ; Table containing information related to module configurations

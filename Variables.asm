@@ -5,6 +5,8 @@ ramaddr function x,(-(x&$80000000)<<1)|x
 ; NLZ Configuration Constants.
 NLZ_CONFIG	equ	4					; Set this value to one of the following values to configure the decompressor for your desired module size.
 								; 1 = $200 byte modules; 2 = $400 byte modules; 3 = $800 byte modules; 4 = $1000 byte modules; 5 = $2000 byte modules.
+NLZ_FAST_COPY	equ	0					; Build flag to determine whether the NLZ decompressor will use a copy device for most dictionary matches.
+								; 0 = Default match copy logic (fast speed, compact code size); 1 = Fast match copy logic (faster speed, adds ~0.5Kb to the code size).
 NLZ_BUFFER_SIZE	equ	$100<<NLZ_CONFIG			; Size of the decompression buffer (in bytes).
 NLZ_QUEUE_SIZE	equ	32					; Number of slots in the decompression queue.
 
